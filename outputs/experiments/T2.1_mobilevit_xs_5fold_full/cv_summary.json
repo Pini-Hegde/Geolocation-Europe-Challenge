@@ -1,0 +1,70 @@
+{
+  "backbone": "mobilevit_xs.cvnets_in1k",
+  "folds_run": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cv_median_km_mean": 459.9344474805033,
+  "cv_median_km_std": 19.421071575497663,
+  "cv_mean_km_mean": 618.3545145174728,
+  "per_fold": {
+    "0": {
+      "best_epoch": 91,
+      "best_val_median_km": 476.2142473189589,
+      "epoch": 99,
+      "train_angular_loss": 0.004029394880141297,
+      "median_km": 480.01021759122114,
+      "mean_km": 642.4549250404697,
+      "frac_lt_200km": 0.1560374149659864,
+      "frac_lt_750km": 0.703656462585034,
+      "epoch_time_s": 18.132187128067017
+    },
+    "1": {
+      "best_epoch": 88,
+      "best_val_median_km": 439.4186215623248,
+      "epoch": 99,
+      "train_angular_loss": 0.0033845462555652612,
+      "median_km": 440.8540768185302,
+      "mean_km": 600.678478157092,
+      "frac_lt_200km": 0.2101233517652063,
+      "frac_lt_750km": 0.7256486601446193,
+      "epoch_time_s": 17.873802423477173
+    },
+    "2": {
+      "best_epoch": 95,
+      "best_val_median_km": 484.4456678529481,
+      "epoch": 99,
+      "train_angular_loss": 0.003602390783545497,
+      "median_km": 489.1440321636576,
+      "mean_km": 622.6880652701335,
+      "frac_lt_200km": 0.15518707482993196,
+      "frac_lt_750km": 0.7045068027210885,
+      "epoch_time_s": 17.97894835472107
+    },
+    "3": {
+      "best_epoch": 98,
+      "best_val_median_km": 452.6638533622945,
+      "epoch": 99,
+      "train_angular_loss": 0.003306583144178946,
+      "median_km": 453.7984582490025,
+      "mean_km": 611.628588402867,
+      "frac_lt_200km": 0.1773713313483624,
+      "frac_lt_750km": 0.7205444491705657,
+      "epoch_time_s": 17.55928087234497
+    },
+    "4": {
+      "best_epoch": 87,
+      "best_val_median_km": 446.9298473059902,
+      "epoch": 99,
+      "train_angular_loss": 0.003231621238926094,
+      "median_km": 450.8014155773359,
+      "mean_km": 614.3225157168022,
+      "frac_lt_200km": 0.1828231292517007,
+      "frac_lt_750km": 0.7227891156462585,
+      "epoch_time_s": 17.89064884185791
+    }
+  }
+}

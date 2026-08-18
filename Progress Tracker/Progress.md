@@ -5,8 +5,8 @@ Detailed experiment numbers live in `Experiment_Design.md` (results log) — thi
 experiment IDs (e.g. `T1.1`) rather than repeating scores, to avoid two files going out of sync.
 Update this at the end of every work session.
 
-**Current phase:** Phase 5 — Architecture experiments (T2.1 MobileViT-XS fold-0 screen done,
-full 5-fold pending).
+**Current phase:** Phase 5 — Architecture experiments (T2.1 MobileViT-XS full 5-fold CV done:
+459.9 ± 19.4km, still short of B1's 288.1km oracle ceiling — deciding what's next).
 **Last updated:** 2026-08-18
 
 ---
@@ -62,6 +62,35 @@ full 5-fold pending).
       MPS environment. Fine for now (mid-experimentation), but flagged as something to fix
       before final packaging (Phase 6) — e.g. regenerate on/for whichever machine trains the
       final model, or hand-prune the CUDA-only lines.
+- [x] **Third compute environment added (2026-08-18): NHR@FAU Alex HPC cluster**
+      (`alex.nhr.fau.de`, `$CLUSTER=alex`). Discovered mid-session that a Claude Code session
+      here was actually running on Alex's login node (`alex2`), not the RTX 4000 — the two are
+      unrelated machines that happen to share this project's home-directory path. Alex login
+      nodes have **no GPU at all** (no `nvidia-smi`); real training must go through SLURM
+      (`sinfo` shows `a40`/`a100`/`rtxpro6k`/`a100mig` GPU partitions, `a40` used as default —
+      largest pool, 44 nodes). `.venv` did not exist on Alex (whatever ran there before must
+      have been on the RTX 4000 or another machine); rebuilt fresh via
+      `module load python/3.12-base && python3 -m venv .venv` + `pip install -r
+      requirements.txt` — installed cleanly (`torch 2.13.0+cu130`, `timm 1.0.28`), confirming
+      the CUDA-13 pins are compatible with Alex's A40 nodes. **Found and fixed a real gotcha:
+      Alex's GPU compute nodes have no outbound internet** — a first SLURM job hung 5 minutes
+      and TIMEOUT'd trying to download pretrained weights from Hugging Face Hub mid-job. Fixed
+      by pre-downloading weights into the local HF cache from the (internet-connected) login
+      node, then setting `export HF_HUB_OFFLINE=1` in every sbatch script. Added
+      `slurm/smoke_test.sbatch` (5min sanity check: GPU visible, param-compliance, dataloader,
+      forward pass — run before any real job to catch env issues in minutes, not hours) and
+      `slurm/train_t2_1_5fold.sbatch` (the real training job template — 1x GPU, `HF_HUB_OFFLINE=1`,
+      `--mail-type=END,FAIL`). Confirmed empirically (via `who`/`w` on the login node — several
+      other accounts had 2-5 concurrent `pts` sessions) that Alex allows unlimited concurrent
+      SSH sessions per user, and SLURM jobs run fully detached from the submitting shell/SSH
+      session once `sbatch`'d — verified in practice: job 4041460 (see Phase 5) ran to
+      completion under `slurmd` on its compute node regardless of this session's own state,
+      unlike the earlier login-node `nohup`/`setsid` attempts which had no such protection.
+      **Open flag, not yet resolved:** `outputs/experiments/T2.1_mobilevit_xs_5fold_attempt1_died_ep30/`
+      is a failed non-SLURM 5-fold attempt (died ~epoch 30, killed by the login node) that is
+      already git-committed from an earlier session (part of commit `c6af406`) — left in place
+      pending a decision on whether to keep it as a documented failure for the writeup or
+      remove it.
 
 ## Phase 4 — Protocol implementation (Experiment_Design.md Part 1)
 - [x] Geographic leakage check: pairwise-distance clustering analysis on `train_labels.csv`
@@ -112,10 +141,15 @@ first, so it added a step without adding information. List below updated to matc
 current `Experiment_Design.md` tier list (MobileViT-XS promoted to default primary
 candidate, `timm` added as a dependency).
 
-- [~] T2.1 — MobileViT-XS, ImageNet-pretrained (`timm`) — **new default primary candidate**.
-      Fold-0 quick screen done: 441.8km median (regularized config), beats B0/underfit/
-      overfit attempts, still short of B1 (288.1km). Full 5-fold CV not yet run — see
-      `Experiment_Design.md` results log for the full story (underfit → overfit → fixed).
+- [x] T2.1 — MobileViT-XS, ImageNet-pretrained (`timm`) — **new default primary candidate**.
+      Full 5-fold CV done (2026-08-18, on Alex/`a40`, SLURM job 4041460): **459.9 ± 19.4km**
+      median — confirms the fold-0 screen (441.8km) wasn't optimistic, tight spread across
+      folds. Still **171.8km short of B1** (288.1km oracle ceiling) — see `Experiment_Design.md`
+      results log for the full story (underfit → overfit → fixed → full CV) and per-fold
+      breakdown. **Decision point (2026-08-18): what's next** — T2.1b attention-pooling
+      ablation, T2.2-2.4 comparison backbones, or skip ahead to T3.1 grid-cell classification
+      since T2.1 not beating B1 specifically motivates task reformulation over further backbone
+      tuning. Discussion pending before committing to the next tier/subclass.
 - [ ] T2.1b — attention-pooling head ablation (learned query cross-attention vs. plain GAP)
 - [ ] T2.2 — MobileNetV3-Small, ImageNet-pretrained (comparison point)
 - [ ] T2.3 — GhostNet 1.0x, ImageNet-pretrained (comparison point)
@@ -216,3 +250,24 @@ candidate, `timm` added as a dependency).
   survived a subsequent SSH drop that killed the monitor watching it but not the training
   itself. Results logged in `Experiment_Design.md`. Next: full 5-fold CV with the
   regularized config for the real reportable T2.1 number.
+- **2026-08-18 (cont.)**: Ran the full 5-fold CV, this time properly via SLURM instead of a
+  backgrounded login-node process. Discovered this session's shell is actually on **NHR@FAU's
+  Alex HPC cluster** (`alex2.nhr.fau.de` login node), not the RTX 4000 — the two share this
+  project's directory path but are unrelated machines; Alex login nodes have no GPU at all, so
+  a prior attempt at the full 5-fold run directly on the login node (untracked in this file,
+  `outputs/experiments/T2.1_mobilevit_xs_5fold_attempt1_died_ep30/`, already git-committed)
+  had died silently around epoch 30. Set up the Alex environment from scratch (`.venv` didn't
+  exist there): `module load python/3.12-base`, fresh venv, `pip install -r requirements.txt`
+  — installed cleanly on Alex's A40 nodes. Wrote `slurm/smoke_test.sbatch` and ran it first
+  (caught a real bug: GPU compute nodes have no outbound internet, so `timm`'s pretrained-
+  weight download hung and TIMEOUT'd after 5 min on the first attempt; fixed by pre-caching
+  weights via the login node + `HF_HUB_OFFLINE=1`) before committing to the real ~2.5h job.
+  Wrote `slurm/train_t2_1_5fold.sbatch` (1x `a40` GPU, 8h limit, same regularized config as
+  the fold-0 screen, `--mail-type=END,FAIL`) and submitted it (job 4041460) — ran to
+  `COMPLETED` in 2h32m with no issues, confirmed unaffected by session state throughout
+  (verified this is a real property of `sbatch` jobs, not an assumption — they run under
+  `slurmd` on the compute node independent of the submitting shell/SSH session, unlike the
+  earlier `nohup`/`setsid` login-node attempts). **Result: 459.9 ± 19.4km full 5-fold CV
+  median** — logged in `Experiment_Design.md`. Still short of B1 (288.1km) by 171.8km. Next:
+  discuss with the user which direction to take before starting the next tier/subclass —
+  T2.1b ablation, T2.2-2.4 comparison backbones, or T3.1 grid-cell reformulation.

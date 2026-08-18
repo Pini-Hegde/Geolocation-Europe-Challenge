@@ -7,4 +7,6 @@ __MACOSX/
 __pycache__/
 **/__pycache__/
 *.pyc
+slurm_logs/*.out
+slurm_logs/*.err
 
