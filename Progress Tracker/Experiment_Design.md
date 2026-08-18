@@ -182,10 +182,65 @@ axes, not a single ladder.
   a concrete, evidenced number instead of an assumed claim.
 
 ### Tier 3 — Task reformulation (backbone fixed at best of Tier 2)
-- **T3.1 Classification + offset regression (grid-cell hybrid)**: bin the map into cells
-  (informed by the country-area analysis from B1), classification head over cells + regression
-  head for the offset within the predicted cell. PlaNet-style; tends to help when precise
-  regression is hard relative to dataset size.
+- **T3.1 Classification + offset regression (grid-cell hybrid), backbone = StarNet-S1** —
+  **finalized 2026-08-18**, not yet implemented (build deferred to a future session on the Alex
+  cluster). Chosen over T2.1b/T2.2-2.4 backbone tuning on the *original* direct-regression
+  formulation: T2.1's `<200km` rate (17.8%) is worse than B1's (28%) despite B1 not looking at
+  the image at all — points at country/region-level confusion, which a backbone swap under the
+  same direct-regression formulation wouldn't fix.
+  - **Formulation — PlaNet-inspired, adapted, NOT a straight replica with only the backbone
+    swapped** (corrected 2026-08-18; three real deviations from the paper, not one):
+    1. **Backbone**: StarNet-S1 instead of PlaNet's Inception-BN — the intended, deliberate
+       change (see below).
+    2. **Offset-regression head**: the original PlaNet paper (Weyand et al., ECCV 2016 —
+       Inception-BN backbone, 26,263 adaptive S2 cells) is **pure classification with no
+       offset-regression head**; it predicts each cell's training-photo center-of-mass as the
+       answer. The offset-regression head here is **our own addition**, justified by analogy to
+       object-detection-style class+offset prediction (e.g. YOLO-style grid cell + box offset),
+       not part of PlaNet itself — cite PlaNet for the adaptive-cell idea only, describe the
+       offset head as an original addition in the writeup, not as "the PlaNet architecture."
+    3. **Cell count / partitioning algorithm — STILL OPEN, not yet decided.** PlaNet's
+       26,263-cell result came from ~126 million photos; this dataset has 11,758 images across
+       12 countries (~10,000x less data), so copying PlaNet's cell count directly would leave
+       most cells with 0-1 training images and collapse the classification target. Needs a
+       decision before implementation: (a) real S2 cells (Google's geometry library, PlaNet's
+       actual method) vs. a simpler custom partitioning (e.g. recursive lat/lng bounding-box
+       splits by median count, 2D-KD-tree-style), and (b) a concrete target cell count /
+       minimum-images-per-cell threshold sized for 11.7k images. Not resolved as of 2026-08-18.
+    Cells sized so each has **roughly equal training-image density** (the adaptive *principle*
+    is decided, motivated directly by B1's per-country breakdown: error concentrates in
+    large/sparse countries like Norway/Spain/Turkey — the concrete method/count is not decided,
+    see point 3). Classification head over cells + regression head for the offset within the
+    predicted cell.
+  - **Protocol requirement:** the cell grid must be built **per-fold, from that fold's training
+    split only** — a grid built from all 11,758 images (including each fold's held-out
+    validation images) would leak validation-set density information into the cell boundaries,
+    the same leakage class as §1's clustering check (and the same reason B0/B1 centroids are
+    computed per-fold, not globally).
+  - **Same CV protocol as every other experiment:** fixed group-stratified 5-fold from
+    `folds.json`, two-stage screening (1-2 fold quick screen, then full 5-fold for the
+    reportable number).
+  - **Backbone: StarNet-S1** (`timm.create_model('starnet_s1', pretrained=True)`), 2.9M params,
+    73.5% ImageNet top-1 (CVPR 2024, "Rewrite the Stars"). Chosen deliberately over
+    MobileViT-XS to try a genuinely different, non-mainstream architecture family — the "star
+    operation" (element-wise multiplication of two linear branches, implicitly projecting into
+    a high-dimensional feature space without the parameter cost of actually widening the
+    network) is a third design lineage distinct from both the depthwise-separable-conv family
+    (MobileNetV3/GhostNet/ShuffleNetV2) and MobileViT's attention-hybrid design. Verified via
+    web search (not memory): natively available in `timm`, so no external-repo integration
+    cost. Two alternatives were considered and ruled out: **ParC-Net**
+    (`hkzhang-git/ParC-Net`, ~78.6% top-1 but ~5.0M params, not in `timm`) and **MicroNet**
+    (`liyunsheng13/micronet`, 2.6M params but only 62.5% top-1, not in `timm`) — both carried
+    real external-repo integration cost (clone repo, adapt model code, manually source
+    checkpoint) that StarNet-S1 avoids.
+  - **Methodological trade-off, flagged deliberately:** the plan originally called for running
+    T3.1 on the existing MobileViT-XS backbone first as a control, to isolate the formulation
+    change (regression → classification+offset) as the one new variable versus T2.1. **Decided
+    2026-08-18 (explicit choice, not an oversight): skip the control and go straight to
+    StarNet-S1.** Consequence for the results log and writeup: if this T3.1 result differs from
+    T2.1's, it cannot be attributed cleanly to the formulation change alone — the backbone
+    changed at the same time. State this explicitly wherever this result is discussed; do not
+    claim the formulation change alone explains the delta.
 - **T3.2 Multi-task with country auxiliary head**: shared backbone, joint loss = spherical
   regression loss + country classification loss, using the provided `country` label as free
   extra supervision.
