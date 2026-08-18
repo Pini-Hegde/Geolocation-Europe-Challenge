@@ -157,7 +157,13 @@ classification, etc.).
 ---
 
 ## Open decision points still ahead
-- Organizer email (pretrained weights, mixup/synthetic-data question) — answer may reshape
-  Phase D candidate priorities; send before Phase D gets far.
+- Pretrained weights: **resolved 2026-08-17** — allowed, any source, as long as the
+  submitted model is ≤5M params; fine-tuning on provided `train/` data is allowed. This
+  reshapes Phase D candidate priorities (see `Experiment_Design.md` Tier 2+) — pretrained
+  ImageNet backbones under 5M params (e.g. MobileNetV3-Small, EfficientNet-Lite0) are now
+  in scope and should generally be preferred as a starting point over from-scratch training,
+  since ~11.7k images is small for training a backbone from scratch.
+- Mixup/cutmix-as-synthetic-data question — still open, send a short email before relying on
+  it in augmentation policy.
 - No deadline has been discussed yet — if there's a hard due date, worth laying a calendar
   over this flow so Phase D's loop has a concrete time budget instead of an open-ended one.

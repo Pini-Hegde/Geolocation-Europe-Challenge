@@ -1,4 +1,10 @@
 .venv/
 **/.venv/
 .DS_Store
+geo_dataset/
+geo_dataset.zip
+__MACOSX/
+__pycache__/
+**/__pycache__/
+*.pyc
 

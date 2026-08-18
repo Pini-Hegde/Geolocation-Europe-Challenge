@@ -3,10 +3,16 @@
 ## Constraints (every experiment below is designed to satisfy both, no exceptions)
 1. **≤ 5,000,000 parameters** in the submitted model. Ensembles are allowed only if the
    **combined** parameter count across all sub-models stays ≤ 5M.
-2. **No external or generated data.** Working assumption: this rules out ImageNet-pretrained
-   weights too, since a pretrained backbone has effectively learned from external data.
-   **TODO: confirm with organizers by email.** Until confirmed, everything here is
-   **train-from-scratch, on `train/` only.**
+2. **No external or generated data — but pretrained weights are allowed.** Confirmed
+   2026-08-17: pretrained backbones (any source, e.g. ImageNet) are permitted, as long as the
+   final submitted model is ≤5M params, and **fine-tuning the pretrained model on the
+   provided `train/` data is allowed.** "No external data" applies to the training data itself
+   (no extra images beyond what's provided), not to weight initialization. This changes the
+   default strategy: with only ~11.7k training images, fine-tuning a small pretrained backbone
+   should generally outperform training the same architecture from scratch, so pretrained
+   init is the default from Tier 2 onward — from-scratch is now the exception, worth doing
+   only as an explicit ablation/comparison point, not the baseline assumption.
+   Mixup/cutmix-as-synthetic-data question is still open (§6) — pending a short email.
 
 Every candidate architecture in this doc gets its parameter count **verified programmatically**
 before it's trained (see Protocol §5) — not eyeballed from a paper's reported number, since
@@ -31,7 +37,7 @@ This section comes before architecture choice on purpose: with ~11.7k training i
 which named backbone we pick. Get this wrong and every number in the results log downstream
 is untrustworthy, regardless of architecture.
 
-### 1. Geographic leakage check (do this FIRST, before any model is trained)
+### 1. Geographic leakage check (do this FIRST, before any model is trained) — **DONE, 2026-08-17**
 Street-level datasets are often built by driving a route and sampling frames every few
 meters, which can put near-duplicate locations in both train and validation under a naive
 random split — silently inflating every validation score we'd ever report. Action: compute
@@ -41,13 +47,29 @@ other. If clusters exist, splitting must keep each cluster entirely in one fold 
 by location cluster, not plain stratified k-fold). This determines the actual CV strategy in
 §2, so it has to happen first.
 
+**Result:** ran `src/protocol/leakage_check.py` (haversine BallTree, nearest-neighbor distance
++ connected-components clustering at several thresholds). No exact-duplicate coordinates, and
+the nearest-neighbor distance histogram is smooth with no artificial spike near zero (so this
+isn't a duplicate-image artifact) — but at the 500m threshold, **24.56% of training points
+(2,888 / 11,758) fall into a multi-point cluster**, up to 32 images in one cluster, and it
+scales further at looser thresholds (34.8% at 1km, 46.2% at 2km). Leakage is real and
+unevenly distributed by country — worst in **Iceland (47.5%)** and **Norway (45.4%)**
+(plausibly sparse road networks → repeated sampling along the same route), lightest in
+**Germany (7.4%)** and **France (10.2%)**. Full breakdown, histogram, and per-country table:
+`outputs/protocol/leakage_check/summary.md`. Cluster assignment (filename → cluster_id,
+500m threshold) saved to `outputs/protocol/leakage_check/clusters_500m.csv` for use as the
+group key in group-k-fold.
+
+**Decision: use group-stratified 5-fold CV** (group = 500m location cluster, stratify by
+country) for every experiment from here on — plain stratified k-fold is ruled out.
+
 ### 2. Evaluation protocol
-- **Stratified k-fold CV (k=5), stratified by `country`**, used as the default protocol for
-  *every* experiment — including the naive baseline — not introduced later once we "get
-  serious." Given training is cheap at this model size, there's no excuse to trust a single
-  noisy train/val split.
-- If §1 finds location clustering, upgrade to **group-stratified k-fold** (group = location
-  cluster, stratify by country) so no cluster straddles folds.
+- **Group-stratified k-fold CV (k=5)** — group = 500m location cluster from §1's leakage
+  check, stratified by `country` — used as the default protocol for *every* experiment,
+  including the naive baseline, not introduced later once we "get serious." §1 found real
+  clustering (24.6% of points affected at 500m), so plain stratified k-fold is ruled out;
+  every cluster must land entirely in one fold. Given training is cheap at this model size,
+  there's no excuse to trust a single noisy train/val split either.
 - Report mean ± std of median-km across the 5 folds, not just a single fold's number — this
   tells us whether an architecture is actually better or within noise.
 - Fixed, saved fold indices (e.g. a `folds.json` with image filenames per fold) so every
@@ -110,26 +132,54 @@ dependent FC layers before we burn a training run on something over budget.
 
 ## Part 2 — Architecture tiers (naive → complex)
 
-All models below are custom or reduced-width versions of known efficient designs, sized to
-stay **under 5M params at our actual input resolution, verified per Protocol §5**, and
-**trained from scratch** per the constraint assumption above. Every tier from T1 onward uses
-the spherical-vector target (§3) and the k-fold protocol (§2) — architecture tier and
-methodology tier are independent axes, not a single ladder.
+All models below are sized to stay **under 5M params at our actual input resolution, verified
+per Protocol §5**. As of 2026-08-17, **pretrained weights are allowed** (see Constraints §2) —
+Tier 2+ now defaults to ImageNet-pretrained init + fine-tuning on `train/`, with from-scratch
+kept only as an explicit ablation. Every tier from T1 onward uses the spherical-vector target
+(§3) and the k-fold protocol (§2) — architecture tier and methodology tier are independent
+axes, not a single ladder.
 
 ### Tier 1 — Naive baseline (smallest learned model)
-- **T1.1**: Small custom CNN (4-5 conv+pool blocks, GAP, FC → 3 outputs for the unit vector).
-  Est. well under 1M params. Purpose: prove the full pipeline — data loading, CV splitting,
-  spherical target conversion, training loop, error analysis tooling, `predictions.csv`
-  export — works correctly end to end before optimizing anything.
+- **T1.1**: Small custom CNN (4-5 conv+pool blocks, GAP, FC → 3 outputs for the unit vector),
+  trained from scratch. Est. well under 1M params. Purpose: prove the full pipeline — data
+  loading, CV splitting, spherical target conversion, training loop, error analysis tooling,
+  `predictions.csv` export — works correctly end to end before optimizing anything. Kept
+  from-scratch on purpose (it's the pipeline smoke test, not a competitive candidate).
 
-### Tier 2 — Parameter-efficient backbones (still direct spherical-vector regression)
-- **T2.1 MobileNetV3-Small (from scratch)**, width multiplier tuned so verified params land
-  1-2.5M.
-- **T2.2 ShuffleNetV2 (0.5x-1x width, from scratch)**, ~1-2M params — grouped convs + channel
-  shuffle, cheap comparison point against MobileNet.
-- **T2.3 Custom narrow ResNet ("ResNet-lite")**: ResNet18-style block layout, channel widths
-  reduced until verified under budget. Residual connections for optimization stability at
-  this depth vs. the plain CNN in T1.
+### Tier 2 — Parameter-efficient pretrained backbones, fine-tuned (still direct spherical-vector regression)
+- **T2.1 MobileViT-XS, ImageNet-pretrained (`timm`, `mobilevit_xs.cvnets_in1k`)**, fine-tuned
+  end-to-end — **new default primary candidate, decided 2026-08-18** (supersedes plain
+  MobileNetV3-Small; see rationale below). Feature extractor ~1.93M params (verified,
+  256x256 input, pooled 384-dim output via `num_classes=0`), leaving ~3M+ of budget spare
+  for a regression head, an attention-pooling variant, or a Tier 3 auxiliary head. Hybrid
+  CNN+transformer: conv stem for local texture/edges, transformer blocks for global
+  spatial attention (~74.8% ImageNet top-1, notably stronger than MobileNetV3-Small's ~67%
+  at a similar-or-smaller param count) — this is Tier 4.2's "tiny CNN+attention hybrid"
+  idea, pulled forward and made the default rather than an optional stretch goal, because
+  it gets the attention benefit in an already-pretrained, proven form instead of training
+  attention layers from scratch on ~11.7k images (which is the specific data-hunger risk
+  flagged in T4.2's original note). Rationale for not building a bespoke from-scratch
+  CNN+attention model instead: attention has no locality/translation inductive bias, so it
+  needs scale or pretraining to earn its keep — a hand-built version would be fighting the
+  data budget rather than using a proven, already-pretrained one for free.
+  - **T2.1b (ablation) attention-pooling head**: replace plain global-average-pooling with a
+    single learned query cross-attending over the 7x7 (49-token) spatial feature map
+    (project 576(or 384)→256, then multi-head cross-attention, ~350-450k added params) —
+    cheap, isolated ablation against plain pooling on the identical backbone/data, gives a
+    clean evidenced number for the writeup rather than an assumed one.
+- **T2.2 MobileNetV3-Small, ImageNet-pretrained**, fine-tuned end-to-end — ~2.5M params,
+  kept as a comparison point against T2.1 (weaker, pure-CNN baseline; was the original
+  default primary candidate before the MobileViT-XS decision).
+- **T2.3 GhostNet 1.0x, ImageNet-pretrained (`timm`)**, fine-tuned — ~5.2M params (tight,
+  uses nearly the whole budget alone) — very param-efficient pure-CNN design, comparison
+  point for "how much is the transformer half of T2.1 actually buying us" against a strong
+  conv-only alternative at a similar accuracy class.
+- **T2.4 ShuffleNetV2 (0.5x-1x width), ImageNet-pretrained**, fine-tuned — ~1-2M params,
+  cheapest comparison point, leaves the most param budget spare for Tier 3 auxiliary heads.
+- **T2.5 (ablation) Best of T2.1-2.4, from scratch**: same architecture, random init, same
+  protocol — isolates how much pretraining is actually buying us on this task/dataset size.
+  Cheap to run once the pretrained version is built (just flip the init) and gives the writeup
+  a concrete, evidenced number instead of an assumed claim.
 
 ### Tier 3 — Task reformulation (backbone fixed at best of Tier 2)
 - **T3.1 Classification + offset regression (grid-cell hybrid)**: bin the map into cells
@@ -144,10 +194,12 @@ methodology tier are independent axes, not a single ladder.
 - **T4.1 Mixture density output**: small mixture of von Mises-Fisher (spherical analogue of a
   Gaussian) or 2D Gaussian components, for images that are genuinely visually ambiguous
   between multiple plausible locations. Take the mixture mode at inference.
-- **T4.2 Tiny CNN+attention hybrid (MobileViT-XXS scale, from scratch)**: local conv bias +
-  some global attention for scene-level context. Risk: attention layers are more data-hungry;
-  without pretraining this may need heavier regularization to not overfit ~11.7k images.
-  Treat as an experiment to try and report on honestly if it underperforms, not a guaranteed win.
+- ~~**T4.2 Tiny CNN+attention hybrid (MobileViT-XXS scale)**~~ — **superseded, 2026-08-18**:
+  pulled forward into T2.1 (MobileViT-XS) as the new default primary candidate rather than
+  an optional stretch goal, once we confirmed a pretrained hybrid backbone was available at
+  budget via `timm`. A larger, purpose-built attention hybrid (e.g. FastViT-T8, ~4M params)
+  remains a possible Tier 4 stretch pick if T2.1's error analysis specifically motivates
+  going bigger.
 
 ### Tier 5 — Budget-aware ensembling & free wins (OPTIONAL / stretch — T5.2 TTA is cheap and low-risk; T5.1 ensembling adds real complexity, only if it clearly beats a single model and can be explained simply)
 - **T5.1 Two-model ensemble**: two independently trained models (~2-2.5M params each,
@@ -163,6 +215,8 @@ methodology tier are independent axes, not a single ladder.
 
 | Exp ID | Architecture | Formulation | Params (verified) | CV median km (mean±std) | CV mean km | <200km % | <750km % | Notes |
 |--------|--------------|-------------|--------------------|--------------------------|------------|----------|----------|-------|
-| B0     |              |             |                    |                          |            |          |          |       |
-| B1     |              |             |                    |                          |            |          |          |       |
-| T1.1   |              |             |                    |                          |            |          |          |       |
+| B0     | none (closed-form) | global spherical-mean centroid, predicted for every image | 0 | 1217.8 ± 9.1 | 1217.8 | 2.3% | 20.1% | Floor. Predicts the training-fold centroid regardless of image content. |
+| B1     | none (closed-form) | oracle true-country spherical-mean centroid | 0 | 288.1 ± 4.2 | 291.1 | 28.0% | 96.9% | Cheats: uses the ground-truth country label. Ceiling on "perfect country classification alone." Gap vs. B0 (1218→288km) shows country-level signal is worth most of the error budget; B1's own 288km / 28% <200km shows real within-country precision work remains even with country solved. Worst within-country error: Norway (521km median), Spain (468km), Turkey (408km) — large/sparse countries. Best: Iceland (172km), Belarus (192km), Poland (229km) — compact countries. Motivates Tier 3 grid-cell / country-aux-head design. Full per-country table: `outputs/protocol/eda_baselines/b1_per_country.csv`. |
+| ~~T1.1~~ | — | — | — | — | — | — | — | **Dropped, 2026-08-18** — see Tier 1 note above. |
+| T2.1 (fold 0 screen, no reg) | MobileViT-XS, ImageNet-pretrained, `timm` | direct spherical-vector regression, `angular_loss`, 256px, backbone_lr=2e-4/head_lr=2e-3/wd=1e-4, cosine schedule | 1,934,003 | 492.8 (1 fold only) | 650.3 | 14.4% | — | **Preliminary, single-fold screen, not full CV.** First real trained model. 15ep run badly underfit (851km, confirmed via train-set eval showing no train/val gap); 60ep converged to 611.6km then plateaued (later shown to be an LR-schedule artifact, not capacity); 100ep at higher LR reached this number but revealed clear overfitting (train median 240.9km vs. val 492.8km, 251.9km gap) via the same train-set-no-aug diagnostic used for B0/B1. Superseded by the regularized run below. |
+| **T2.1 (fold 0 screen, regularized)** | MobileViT-XS, ImageNet-pretrained, `timm` | same as above + dropout=0.3 (before head), weight_decay=5e-4 (up from 1e-4), wider augmentation (RandomResizedCrop scale 0.5-1.0, stronger ColorJitter, RandomErasing p=0.25) | 1,934,003 | **441.8 (1 fold only)** | 603.1 | 16.3% | 73.8% | **Current best, still single-fold screen — full 5-fold not yet run.** Regularization directly targeted the overfitting found above: val improved (492.8→441.8km) *and* train/val gap shrank 43% (251.9km→144.1km; train median 297.7km), confirming better generalization, not just a lucky number. Still 153.7km short of B1's 288.1km oracle ceiling. Best epoch 91/100. Config: `outputs/experiments/T2.1_mobilevit_xs/config.json`. Next: full 5-fold CV with this config for the real reportable number. |

@@ -1,0 +1,38 @@
+{
+  "roundtrip_real_data": {
+    "n_points": 11758,
+    "max_roundtrip_error_km": 2.844309254611434e-12,
+    "mean_roundtrip_error_km": 4.4449955824400123e-13,
+    "unit_vector_norm_min": 0.9999999999999998,
+    "unit_vector_norm_max": 1.0000000000000002
+  },
+  "edge_cases": {
+    "north_pole": {
+      "true_lat": 90.0,
+      "recovered_lat": 90.0
+    },
+    "south_pole": {
+      "true_lat": -90.0,
+      "recovered_lat": -90.0
+    },
+    "wraparound_179_vs_neg179": {
+      "true_haversine_km": 222.39016046706487,
+      "naive_raw_degree_squared_error": 128164.0,
+      "angular_loss": 0.0006091729809042379,
+      "note": "raw-degree squared error is huge (~358^2) for two points that are actually only 222.4km apart; angular_loss correctly stays small."
+    }
+  },
+  "loss_bounds": {
+    "identical_vectors": 0.0,
+    "orthogonal_vectors": 1.0,
+    "antipodal_vectors": 2.0,
+    "non_unit_norm_pred_matches_unit_case": 0.0
+  },
+  "torch_numpy_agreement": {
+    "n_sampled": 500,
+    "vector_max_abs_diff": 0.0,
+    "latlon_max_abs_diff_deg": 2.842170943040401e-14,
+    "haversine_max_abs_diff_km": 0.0
+  },
+  "all_checks_passed": true
+}

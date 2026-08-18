@@ -1,0 +1,22 @@
+{
+  "backbone": "mobilevit_xs.cvnets_in1k",
+  "folds_run": [
+    0
+  ],
+  "cv_median_km_mean": 441.788155007463,
+  "cv_median_km_std": 0.0,
+  "cv_mean_km_mean": 603.104957754301,
+  "per_fold": {
+    "0": {
+      "best_epoch": 91,
+      "best_val_median_km": 441.788155007463,
+      "epoch": 99,
+      "train_angular_loss": 0.0033403826520255167,
+      "median_km": 446.1199998767718,
+      "mean_km": 603.104957754301,
+      "frac_lt_200km": 0.16326530612244897,
+      "frac_lt_750km": 0.7380952380952381,
+      "epoch_time_s": 24.59618330001831
+    }
+  }
+}

@@ -1,0 +1,80 @@
+{
+  "n_points": 11758,
+  "n_exact_duplicate_coords": 0,
+  "nn_distance_m": {
+    "min": 2.0869631614504445,
+    "p1": 28.140641477234972,
+    "median": 2507.9777365868385,
+    "p99": 31022.20354889152,
+    "max": 95774.57640552321
+  },
+  "threshold_sweep_m": {
+    "10": {
+      "n_clusters": 11750,
+      "n_clusters_with_gt1_point": 8,
+      "n_points_in_multi_point_cluster": 16,
+      "fraction_points_in_multi_point_cluster": 0.001360775642116006,
+      "max_cluster_size": 2
+    },
+    "50": {
+      "n_clusters": 11598,
+      "n_clusters_with_gt1_point": 152,
+      "n_points_in_multi_point_cluster": 312,
+      "fraction_points_in_multi_point_cluster": 0.02653512502126212,
+      "max_cluster_size": 4
+    },
+    "100": {
+      "n_clusters": 11340,
+      "n_clusters_with_gt1_point": 368,
+      "n_points_in_multi_point_cluster": 786,
+      "fraction_points_in_multi_point_cluster": 0.0668481034189488,
+      "max_cluster_size": 8
+    },
+    "250": {
+      "n_clusters": 10777,
+      "n_clusters_with_gt1_point": 784,
+      "n_points_in_multi_point_cluster": 1765,
+      "fraction_points_in_multi_point_cluster": 0.15011056302092193,
+      "max_cluster_size": 8
+    },
+    "500": {
+      "n_clusters": 10068,
+      "n_clusters_with_gt1_point": 1198,
+      "n_points_in_multi_point_cluster": 2888,
+      "fraction_points_in_multi_point_cluster": 0.2456200034019391,
+      "max_cluster_size": 32
+    },
+    "1000": {
+      "n_clusters": 9226,
+      "n_clusters_with_gt1_point": 1557,
+      "n_points_in_multi_point_cluster": 4089,
+      "fraction_points_in_multi_point_cluster": 0.34776322503827184,
+      "max_cluster_size": 33
+    },
+    "2000": {
+      "n_clusters": 8223,
+      "n_clusters_with_gt1_point": 1900,
+      "n_points_in_multi_point_cluster": 5435,
+      "fraction_points_in_multi_point_cluster": 0.4622384759312808,
+      "max_cluster_size": 37
+    }
+  },
+  "decision_threshold_m": 500,
+  "leakage_fraction_cutoff": 0.01,
+  "leakage_found": true,
+  "recommended_cv_strategy": "group-stratified k-fold (group = location cluster, stratify by country)",
+  "per_country_fraction_in_multi_cluster": {
+    "Iceland": 0.475,
+    "Norway": 0.454,
+    "Belarus": 0.2928,
+    "Spain": 0.279,
+    "Turkey": 0.267,
+    "Finland": 0.259,
+    "United_Kingdom": 0.227,
+    "Italy": 0.208,
+    "Sweden": 0.19,
+    "Poland": 0.1274,
+    "France": 0.102,
+    "Germany": 0.074
+  }
+}

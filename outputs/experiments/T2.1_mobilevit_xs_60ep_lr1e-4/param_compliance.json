@@ -1,0 +1,10 @@
+{
+  "backbone_name": "mobilevit_xs.cvnets_in1k",
+  "pretrained": true,
+  "input_size": 256,
+  "n_params_total": 1934003,
+  "n_params_backbone": 1932848,
+  "n_params_head": 1155,
+  "param_limit": 5000000,
+  "compliant": true
+}
