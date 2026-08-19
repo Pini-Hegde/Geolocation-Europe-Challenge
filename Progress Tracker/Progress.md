@@ -5,11 +5,12 @@ Detailed experiment numbers live in `Experiment_Design.md` (results log) — thi
 experiment IDs (e.g. `T1.1`) rather than repeating scores, to avoid two files going out of sync.
 Update this at the end of every work session.
 
-**Current phase:** Phase 5 — Architecture experiments. Decided next step: T3.1 (adaptive
-density-based geo-cell classification + offset regression) on **StarNet-S1** (no MobileViT-XS
-control run — decided explicitly, see Phase 5 T3.1 note for the trade-off). Not yet
-implemented — build deferred to a future session on the Alex cluster.
-**Last updated:** 2026-08-18
+**Current phase:** Phase 5 — Architecture experiments. Hierarchical country->cell classifier +
+offset regression, 3-backbone full 5-fold comparison at 224px done: **EfficientNet-B0 wins,
+193.0 ± 4.2km** (best result so far, beats B1's 288.1km oracle by 95.1km). FastViT-T8
+213.4±10.1km, MobileViT-XS 240.7±12.1km. Deciding next step (finalize EfficientNet-B0, or
+push further toward the ~114km reference target).
+**Last updated:** 2026-08-19
 
 ---
 
@@ -148,70 +149,78 @@ candidate, `timm` added as a dependency).
       median — confirms the fold-0 screen (441.8km) wasn't optimistic, tight spread across
       folds. Still **171.8km short of B1** (288.1km oracle ceiling) — see `Experiment_Design.md`
       results log for the full story (underfit → overfit → fixed → full CV) and per-fold
-      breakdown. **Decision (2026-08-18, resolved via discussion):** go straight to T3.1
-      (task reformulation) rather than T2.1b or T2.2-2.4 backbone tuning — rationale: T2.1's
+      breakdown. Rules out further Tier 2 tuning as the next step in isolation — T2.1's
       `<200km` rate (17.8%) is *worse* than B1's (28%), a baseline that doesn't look at the
-      image at all, which points at country/region-level confusion rather than a backbone-
-      precision ceiling; direct-regression backbone swaps wouldn't address that. T2.1b/T2.2-2.4
-      deprioritized, not dropped — revisit only if T3.1's error analysis specifically motivates
-      a backbone change (see T3.1 note below).
-- [ ] T2.1b — attention-pooling head ablation (learned query cross-attention vs. plain GAP) — deprioritized, see decision above.
-- [ ] T2.2 — MobileNetV3-Small, ImageNet-pretrained (comparison point) — deprioritized.
-- [ ] T2.3 — GhostNet 1.0x, ImageNet-pretrained (comparison point) — deprioritized.
-- [ ] T2.4 — ShuffleNetV2, ImageNet-pretrained (comparison point) — deprioritized.
-- [ ] T2.5 — best of T2.1-2.4, from scratch (ablation: pretraining value) — deprioritized.
-- [ ] **T3.1 — adaptive density-based geo-cell classification + offset regression, backbone =
-      StarNet-S1 (`timm`, ImageNet-pretrained).** Finalized 2026-08-18 (not yet implemented —
-      build deferred to a future session on the Alex cluster).
-      - **Formulation** (PlaNet-inspired, adapted — NOT a straight replica with only the
-        backbone swapped; corrected 2026-08-18, three real deviations from the paper):
-        1. **Backbone**: StarNet-S1 instead of PlaNet's Inception-BN (the intended, deliberate
-           change).
-        2. **Offset-regression head**: PlaNet has **no** such head — it's pure classification,
-           predicting the cell's training-photo center-of-mass with no learned offset. The
-           offset head here is our own addition, by analogy to object-detection-style
-           class+offset prediction — cite PlaNet for the adaptive-cell idea only, don't
-           attribute the hybrid wholesale to PlaNet in the writeup.
-        3. **Cell count / partitioning algorithm — STILL OPEN, not yet decided.** PlaNet used
-           ~126 million photos → 26,263 adaptive S2 cells (Google's S2 geometry library,
-           recursive splitting with min/max-photo thresholds t1/t2). That scale doesn't transfer
-           to 11,758 images across 12 countries (~10,000x less data) — copying PlaNet's cell
-           count directly would leave most cells with 0-1 training images, and classification
-           would collapse. **Before implementation can start**, need to decide: (a) real S2
-           cells vs. a simpler custom partitioning (e.g. recursively splitting lat/lng bounding
-           boxes by median count, like a 2D KD-tree), and (b) a concrete target cell count /
-           minimum-images-per-cell threshold sized for this dataset. Not resolved as of
-           2026-08-18 — first thing to work out, either before the Alex session or as its first
-           step.
-        Map divided into cells sized so each has ~equal training-image density (motivated
-        directly by B1's per-country breakdown showing error concentrated in large/sparse
-        countries like Norway/Spain/Turkey) — the density-adaptive *principle* is decided, the
-        concrete method/count is not (see point 3 above).
-      - **Protocol requirement:** the cell grid must be built **per-fold, from that fold's
-        training split only** — a global grid built from all 11,758 images (including each
-        fold's held-out validation images) would leak validation-set density information into
-        the cell boundaries, the same class of leakage §1's clustering check already caught.
-      - **Same CV protocol as every other experiment:** fixed group-stratified 5-fold from
-        `folds.json`, two-stage screening (1-2 fold quick screen, then full 5-fold for the
-        reportable number).
-      - **Backbone: StarNet-S1** (`timm.create_model('starnet_s1', pretrained=True)`), 2.9M
-        params, 73.5% ImageNet top-1 — chosen over MobileViT-XS specifically to try a
-        genuinely different, non-mainstream architecture family (CVPR 2024 "star operation":
-        element-wise multiplication of two linear branches, implicitly projecting into a
-        high-dimensional feature space without the parameter cost of widening the network —
-        distinct from both the depthwise-separable-conv lineage of MobileNetV3/GhostNet/
-        ShuffleNetV2 and MobileViT's attention-hybrid design). Also considered and ruled out:
-        ParC-Net (`hkzhang-git/ParC-Net`, ~78.6% top-1 but ~5.0M params, not in `timm`) and
-        MicroNet (`liyunsheng13/micronet`, 2.6M params but only 62.5% top-1, not in `timm`) —
-        both carried real external-repo integration cost that StarNet-S1 avoids by being
-        natively available in `timm`.
-      - **Methodological trade-off, noted deliberately (2026-08-18):** this run skips a
-        MobileViT-XS control on the same formulation — decided explicitly, trading the ability
-        to isolate "did the formulation change help" from "did the backbone change help" for a
-        single faster build. **Write-up implication:** if T3.1/StarNet-S1's result differs from
-        T2.1's, it cannot be attributed to the formulation change alone — both the task
-        reformulation and the backbone changed at once. Flag this honestly rather than
-        overclaim which change deserves credit.
+      image at all, pointing at country/region-level confusion rather than a backbone-precision
+      ceiling. **Next architecture direction is open — under active discussion (2026-08-19).**
+- [ ] T2.1b — attention-pooling head ablation (learned query cross-attention vs. plain GAP).
+- [ ] T2.2 — MobileNetV3-Small, ImageNet-pretrained (comparison point).
+- [ ] T2.3 — GhostNet 1.0x, ImageNet-pretrained (comparison point).
+- [ ] T2.4 — ShuffleNetV2, ImageNet-pretrained (comparison point).
+- [ ] T2.5 — best of T2.1-2.4, from scratch (ablation: pretraining value).
+- [ ] **T3.1 — hierarchical country -> within-country-cell classifier + offset regression.**
+      (An earlier flat-classifier + soft-country-gate version was built, screened, and rolled
+      back 2026-08-19 — see Session Log.) New design, in progress (2026-08-19):
+      - **Backbone: MobileViT-XS**, deliberately kept the same as T2.1 (not swapped again) —
+        isolates formulation + resolution as the tested variables, avoiding last round's
+        "changed everything at once" attribution problem.
+      - **Cells built per-country** (`src/protocol/geo_cells.py`, rewritten): each of the 12
+        countries partitioned independently (same KD-tree median split, MIN=40/MAX=120), so
+        every cell belongs to exactly one country by construction — no cross-country cell can
+        exist. Result: 96 cells/fold, 8 cells/country, ~100 training images/cell.
+      - **Hard hierarchical masking, not a soft bias** (`src/models/hierarchical_geo_classifier.py`):
+        country head predicts country; cell logits are masked to only that country's cells
+        (large negative value, not -inf, for AMP stability) before loss/argmax — true country
+        used for masking during training (teacher forcing), predicted country used at eval/
+        inference. This structurally prevents cross-country cell picks given a correct country
+        prediction, unlike the rolled-back version's learned gate which only reduced their rate.
+      - **384px input** (up from T2.1/the rolled-back attempt's 256px) — the one part of this
+        design that's an educated guess rather than a measured fix; dataset ships native
+        512x512 images, fine cues (signage text, plate style) may not survive 256px.
+      - Params: **1,975,198** (compliant, ~2M under the 5M budget — heads are tiny next to the
+        backbone). Verified at both 256px and 384px (param count is resolution-independent for
+        this backbone, confirmed).
+      - CPU sanity check + GPU smoke test (job 4043921, COMPLETED in ~1min) both passed.
+      - Fold-0 screen (job 4043929, 384px, MobileViT-XS) **completed 2026-08-19: 225.3km best
+        median** (epoch 85), country acc 72.7%, cell acc 37.3%, `<200km` 46.0%, `<750km`
+        77.3% — beats the rolled-back attempt's best (247.1km) and its `<750km` (71-74%).
+        Converged far faster too (68% country acc by epoch 7 vs ~90 epochs before).
+      - **Backbone comparison launched 2026-08-19**: switched default input resolution to
+        **224px** (was 384px) — verified via `timm.data.resolve_data_config` that this is
+        EfficientNet-B0's actual native/pretrained resolution, close to MobileViT-XS's 256px
+        recipe, but **not** FastViT's (that's 256px) — used uniformly anyway so the backbone
+        comparison itself is controlled, with the FastViT mismatch flagged honestly rather
+        than hidden. Added `efficientnet_b0.ra_in1k` (4,148,458 params total — notably closer
+        to the 5M ceiling than the other candidates) and `fastvit_t8.apple_dist_in1k` (the
+        smallest FastViT variant that fits budget — `fastvit_t12` alone is 6.5M, over budget)
+        — both verified compliant at 224px. Rewrote the training script to run **one fold per
+        SLURM job** (`slurm/train_hierarchical_fold.sbatch`, parameterized by
+        `BACKBONE`/`FOLD`/`EXP_NAME` env vars) instead of one job looping over all folds, so
+        all 15 (3 backbones x 5 folds) run in parallel instead of sequentially. Added
+        `src/aggregate_fold_results.py` to compute the real cross-fold mean/std afterward
+        from each job's independent `fold_result.json` (the in-script `cv_summary.json`
+        write is now guarded to only fire for multi-fold single-job runs, so separate
+        per-fold jobs sharing an `exp_name` can't silently overwrite each other's summary).
+        Smoke-tested both new backbones on GPU (jobs 4044272, 4044273, both passed) before
+        submitting the full grid (jobs 4044280-4044294). **MobileViT-XS full 5-fold result
+        (2026-08-19): 240.7 ± 12.1km median**, mean 566.7km, cell acc 36.0%, country acc
+        71.1% (`src/aggregate_fold_results.py`; tight std confirms the fold-0 screen's
+        225.3km wasn't a lucky fold). Beats B1 (288.1km) by 47.4km.
+        **EfficientNet-B0 full 5-fold result (2026-08-19): 193.0 ± 4.2km median**, mean
+        532.4km, cell acc 41.8%, country acc 72.8% — **47.7km better than MobileViT-XS**,
+        and a much tighter std (4.2km vs 12.1km, very consistent across folds). **New best
+        full-CV reportable number.** The extra backbone capacity (4.15M vs 1.98M params)
+        appears to directly help the diagnosed bottleneck (cell classification accuracy: 41.8%
+        vs 36.0%). **FastViT-T8 full 5-fold result: 213.4 ± 10.1km median**, mean 552.0km,
+        cell acc 39.1%, country acc 71.8% — beats MobileViT-XS (240.7km) despite training at
+        a resolution mismatched to its own native pretraining (224px used here vs FastViT's
+        actual 256px native/pretrained resolution, flagged earlier) — suggests FastViT is a
+        genuinely competitive architecture that might close more ground at its native
+        resolution, though not the current priority given EfficientNet-B0's clear lead.
+        **Final 3-way backbone comparison (all hierarchical, 224px, full 5-fold):**
+        EfficientNet-B0 193.0±4.2km (best) > FastViT-T8 213.4±10.1km > MobileViT-XS
+        240.7±12.1km. All three beat B1 (288.1km). Gap to the ~114km reference target
+        narrowed from 174.8km (B1) to 79km (EfficientNet-B0).
 - [ ] T3.2 — multi-task with country auxiliary head
 - [ ] T4.1 — mixture density output (optional stretch)
 - [ ] T5.1 — two-model ensemble (combined ≤5M params, verified) (optional stretch)
@@ -326,46 +335,32 @@ candidate, `timm` added as a dependency).
   earlier `nohup`/`setsid` login-node attempts). **Result: 459.9 ± 19.4km full 5-fold CV
   median** — logged in `Experiment_Design.md`. Still short of B1 (288.1km) by 171.8km. Next:
   discuss with the user which direction to take before starting the next tier/subclass —
-  T2.1b ablation, T2.2-2.4 comparison backbones, or T3.1 grid-cell reformulation.
-- **2026-08-18 (cont.)**: Discussion-only session (no code), talked through the T2.1-vs-B1 gap
-  and decided the next step: **T3.1, adaptive density-based geo-cell classification + offset
-  regression**, not T2.1b or T2.2-2.4. Key reasoning: T2.1's `<200km` rate (17.8%) is worse than
-  B1's (28%) — B1 doesn't even look at the image, so a trained model losing to it on that metric
-  points at country/region-level confusion, which a backbone swap under the same direct-regression
-  formulation wouldn't fix; only a formulation change (classification over cells) addresses that
-  directly. Also flagged and agreed: the density-adaptive cell grid must be built **per-fold from
-  training data only**, not once globally, to avoid leaking validation-set density info into cell
-  boundaries (same leakage class as §1's clustering check). Considered two non-`timm`
-  backbone-swap candidates as possible follow-ups (not the first run) — ParC-Net
-  (`hkzhang-git/ParC-Net`, ~78.6% top-1 but ~5.0M params, tight against budget once heads are
-  added, not confirmed via param-compliance yet) and MicroNet (`liyunsheng13/micronet`, M3 =
-  2.6M params but only 62.5% top-1, weaker features) — both require external-repo integration
-  since neither is in `timm`. **Decided: run T3.1 first on the existing MobileViT-XS backbone as
-  a control** (isolates the formulation change as the one new variable vs. T2.1), and only
-  consider a backbone swap afterward if T3.1's own results specifically motivate it. **Not
-  implemented this session by choice** — code build deferred to a future session on the Alex
-  cluster; this session only updated `Progress.md`.
-- **2026-08-18 (cont.)**: Continued the discussion-only session. Clarified the exact PlaNet
-  attribution (verified via web search rather than memory): PlaNet itself is pure classification
-  over adaptive S2 cells (Inception-BN backbone, 26,263 cells, predicts each cell's
-  training-photo center-of-mass) with **no offset-regression head** — the offset head in our
-  T3.1 design is our own addition, not from the paper, justified by analogy to object-detection
-  class+offset prediction; noted this must be attributed correctly in the writeup. Then explored
-  further non-mainstream backbone candidates under ~3M params, verifying each via web search
-  rather than reciting from memory: StarNet-S1 (2.9M params, 73.5% top-1, **in `timm`**,
-  CVPR 2024 "star operation" — element-wise multiplication of two linear branches instead of
-  conv or attention), EdgeNeXt-XXS (1.3M, 71.2%, in `timm`), FasterNet-T0 (3.9M, 71.9%, in
-  `timm`, Partial Convolution operator — flagged as a "next level" option once over 3M is
-  acceptable), and Mobile-Former-52M (3.5M, 68.7%, **not** in `timm`, no official code release —
-  ruled out on both weaker accuracy and the same integration risk as ParC-Net/MicroNet).
-  **Decided: StarNet-S1** — best accuracy-per-param of the non-mainstream options, and (unlike
-  ParC-Net/MicroNet) natively available in `timm`, so no external-repo integration cost.
-  Explicitly asked and confirmed with the user whether to still run a MobileViT-XS control
-  before swapping to StarNet-S1 (to isolate the formulation-change variable) — **user chose to
-  go straight to StarNet-S1**, accepting that this T3.1 result won't isolate whether the
-  formulation change or the backbone change drives any difference from T2.1; noted as a
-  deliberate, flagged trade-off rather than an oversight. Finalized T3.1 plan: PlaNet-inspired
-  adaptive per-fold density cells + offset-regression head (our addition) on StarNet-S1,
-  same group-stratified 5-fold protocol as everything else. **Not implemented this session by
-  choice** — build deferred to a future session on the Alex cluster; this session only updated
-  the tracker `.md` files.
+  T2.1b ablation, T2.2-2.4 comparison backbones, or a Tier 3 reformulation.
+- **2026-08-18/19**: Explored a Tier 3 candidate — density-adaptive geo-cell classification +
+  offset regression (KD-tree cell partitioning, StarNet-S1 backbone; a country-auxiliary-head
+  variant was also built to address a cross-country-confusion failure mode found via error
+  analysis). Screened on 2 folds; results were in the ~244-255km median range, beating B1
+  (288.1km) but not by a large enough or clearly-architecture-motivated margin to commit to a
+  full 5-fold run. **Rolled back 2026-08-19** — all code/artifacts/tracker detail for this
+  attempt removed, per-decision to reconsider the architecture direction from scratch rather
+  than continue iterating on this specific approach. State reverted to the T2.1 baseline
+  above. Next: discuss alternative architecture candidates.
+- **2026-08-19 (cont.)**: Discussed why the rolled-back attempt plateaued: error analysis had
+  shown correct-cell error was already 66-84km (near the target the user's friend reportedly
+  hit, ~114km) — the bottleneck was cell classification accuracy (~34-36%), not offset
+  precision. Decided on a new design targeting that specific bottleneck: hierarchical
+  (not soft-gated) country->cell classification, country-respecting cells (not a global
+  partition), and testing 384px input (untested variable). Backbone deliberately kept at
+  MobileViT-XS rather than swapped again, to isolate formulation+resolution as the two new
+  variables. Confirmed param budget: full model (backbone + country head + cell head + offset
+  head) is 1,975,198 params — ~2M of the 5M budget unused, heads are negligible next to the
+  backbone. Built the full pipeline: rewrote `src/protocol/geo_cells.py` for per-country
+  partitioning (96 cells/fold, 8/country, ~100 images/cell), added local-offset utilities
+  back to `src/geo/spherical.py`, extended `src/data/dataset.py` with resolution flexibility
+  + cell/country targets, new model `HierarchicalGeoClassifierRegressor` with hard masking
+  (teacher-forced by true country in training, self-predicted country at eval), new
+  `check_compliance_hierarchical_model`, new `src/train_hierarchical.py`. Verified locally on
+  CPU (masking logic explicitly checked: masked-out logits are exactly -1e4), then via GPU
+  smoke test (job 4043921, COMPLETED in ~1min). Submitted the fold-0 screen (job 4043929, 100
+  epochs, 384px) — epoch 1 already at 48.2% country acc / 14.1% cell acc, well above the
+  rolled-back version's equivalent-epoch numbers. Result pending.

@@ -1,0 +1,30 @@
+{
+  "backbone": "mobilevit_xs.cvnets_in1k",
+  "folds_run": [
+    0
+  ],
+  "input_size": 384,
+  "cv_median_km_mean": 225.27260762339586,
+  "cv_median_km_std": 0.0,
+  "cv_mean_km_mean": 538.7273182537158,
+  "cv_cell_top1_acc_mean": 0.37287414965986393,
+  "cv_country_top1_acc_mean": 0.7274659863945578,
+  "per_fold": {
+    "0": {
+      "best_epoch": 85,
+      "best_val_median_km": 225.27260762339586,
+      "n_cells": 96,
+      "epoch": 99,
+      "train_cls_loss": 0.11524063348770142,
+      "train_offset_loss": 0.24803228031114205,
+      "train_country_loss": 0.07211668372211844,
+      "median_km": 229.53305665388496,
+      "mean_km": 538.7273182537158,
+      "frac_lt_200km": 0.4604591836734694,
+      "frac_lt_750km": 0.7729591836734694,
+      "cell_top1_acc": 0.37287414965986393,
+      "country_top1_acc": 0.7274659863945578,
+      "epoch_time_s": 34.41695022583008
+    }
+  }
+}

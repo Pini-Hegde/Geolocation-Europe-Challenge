@@ -1,0 +1,11 @@
+{
+  "backbone_name": "fastvit_t8.apple_dist_in1k",
+  "pretrained": true,
+  "input_size": 224,
+  "n_cells": 96,
+  "n_params_total": 3341822,
+  "n_params_backbone": 3257232,
+  "n_params_head": 84590,
+  "param_limit": 5000000,
+  "compliant": true
+}

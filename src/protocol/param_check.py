@@ -20,8 +20,11 @@ from pathlib import Path
 
 import torch
 
+import numpy as np
+
 from src.data.dataset import INPUT_SIZE
 from src.models.backbone_regressor import GeoBackboneRegressor
+from src.models.hierarchical_geo_classifier import HierarchicalGeoClassifierRegressor
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO_ROOT / "outputs" / "protocol" / "param_check"
@@ -70,27 +73,96 @@ def check_compliance(
     return result
 
 
+def check_compliance_hierarchical_model(
+    backbone_name: str, n_cells: int, pretrained: bool = True, input_size: int = INPUT_SIZE
+) -> dict:
+    """Same idea as `check_compliance`, for `HierarchicalGeoClassifierRegressor`. `n_cells`
+    is fold-specific -- callers training multiple folds should pass the largest `n_cells`
+    across them (a genuine worst case). Uses a dummy all-zeros `cell_to_country` lookup --
+    fine for a param-count/shape check, since that buffer is fixed data, not a learned
+    weight, and doesn't affect param count either way."""
+    dummy_cell_to_country = np.zeros(n_cells, dtype=np.int64)
+    model = HierarchicalGeoClassifierRegressor(
+        backbone_name, n_cells=n_cells, cell_to_country=dummy_cell_to_country, pretrained=pretrained
+    )
+    n_params = count_params(model)
+    n_backbone = count_params(model.backbone)
+    n_head = (
+        count_params(model.country_head) + count_params(model.cls_head)
+        + count_params(model.offset_head)
+    )
+
+    model.eval()
+    with torch.no_grad():
+        dummy = torch.randn(1, 3, input_size, input_size)
+        cell_logits, offset, country_logits = model(dummy)
+    assert cell_logits.shape == (1, n_cells), (
+        f"expected cell logits shape (1, {n_cells}), got {tuple(cell_logits.shape)}"
+    )
+    assert offset.shape == (1, 2), f"expected offset shape (1, 2), got {tuple(offset.shape)}"
+    from src.geo.countries import N_COUNTRIES
+    assert country_logits.shape == (1, N_COUNTRIES), (
+        f"expected country logits shape (1, {N_COUNTRIES}), got {tuple(country_logits.shape)}"
+    )
+
+    compliant = n_params <= PARAM_LIMIT
+    result = {
+        "backbone_name": backbone_name,
+        "pretrained": pretrained,
+        "input_size": input_size,
+        "n_cells": n_cells,
+        "n_params_total": n_params,
+        "n_params_backbone": n_backbone,
+        "n_params_head": n_head,
+        "param_limit": PARAM_LIMIT,
+        "compliant": compliant,
+    }
+    assert compliant, (
+        f"{backbone_name} (hierarchical) with n_cells={n_cells} has {n_params:,} params "
+        f"at input_size={input_size}, over the {PARAM_LIMIT:,} limit."
+    )
+    return result
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--backbone", default="mobilevit_xs.cvnets_in1k")
     parser.add_argument("--input-size", type=int, default=INPUT_SIZE)
     parser.add_argument("--no-pretrained", action="store_true")
+    parser.add_argument(
+        "--n-cells", type=int, default=None,
+        help="if set, check the hierarchical country+cell+offset model instead of the plain "
+        "direct-regression one, with this many total cells.",
+    )
     args = parser.parse_args()
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    result = check_compliance(
-        args.backbone, pretrained=not args.no_pretrained, input_size=args.input_size
-    )
+    if args.n_cells is not None:
+        result = check_compliance_hierarchical_model(
+            args.backbone, n_cells=args.n_cells,
+            pretrained=not args.no_pretrained, input_size=args.input_size,
+        )
+        print(
+            f"{result['backbone_name']} (hierarchical, n_cells={result['n_cells']}): "
+            f"{result['n_params_total']:,} params (backbone {result['n_params_backbone']:,} + "
+            f"heads {result['n_params_head']:,}) at {result['input_size']}px -- "
+            f"{'COMPLIANT' if result['compliant'] else 'OVER BUDGET'} "
+            f"(limit {result['param_limit']:,})"
+        )
+        safe_name = f"{args.backbone.replace('/', '_')}_hier_cells{args.n_cells}"
+    else:
+        result = check_compliance(
+            args.backbone, pretrained=not args.no_pretrained, input_size=args.input_size
+        )
+        print(
+            f"{result['backbone_name']}: {result['n_params_total']:,} params "
+            f"(backbone {result['n_params_backbone']:,} + head {result['n_params_head']:,}) "
+            f"at {result['input_size']}px -- "
+            f"{'COMPLIANT' if result['compliant'] else 'OVER BUDGET'} "
+            f"(limit {result['param_limit']:,})"
+        )
+        safe_name = args.backbone.replace("/", "_")
 
-    print(
-        f"{result['backbone_name']}: {result['n_params_total']:,} params "
-        f"(backbone {result['n_params_backbone']:,} + head {result['n_params_head']:,}) "
-        f"at {result['input_size']}px -- "
-        f"{'COMPLIANT' if result['compliant'] else 'OVER BUDGET'} "
-        f"(limit {result['param_limit']:,})"
-    )
-
-    safe_name = args.backbone.replace("/", "_")
     out_path = OUT_DIR / f"{safe_name}.json"
     out_path.write_text(json.dumps(result, indent=2))
     print(f"Result written to {out_path.relative_to(REPO_ROOT)}")

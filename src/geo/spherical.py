@@ -82,6 +82,50 @@ def haversine_km_np(
     return 2 * EARTH_RADIUS_KM * np.arcsin(np.sqrt(a))
 
 
+# km per degree of latitude, constant everywhere on the sphere (unlike a degree of
+# longitude, which shrinks by cos(lat) -- see the local-offset functions below).
+KM_PER_DEG_LAT = (np.pi / 180.0) * EARTH_RADIUS_KM
+
+
+def latlon_to_local_offset_km_np(
+    lat_deg: np.ndarray,
+    lng_deg: np.ndarray,
+    center_lat_deg: np.ndarray,
+    center_lng_deg: np.ndarray,
+) -> np.ndarray:
+    """(lat, lng) in degrees, relative to a per-point center (e.g. a geo-cell centroid) ->
+    a local equirectangular offset (dx_km, dy_km) of shape (..., 2).
+
+    Flat-earth tangent-plane approximation around each `center`, valid because it's only
+    ever used *within* one geo-cell (small relative to the whole map) -- not a general
+    replacement for `haversine_km_np`, which is exact and used for the actual evaluation
+    metric. Longitude is scaled by cos(center_lat), same correction `latlon_to_unit_vector_np`
+    exists to avoid getting wrong elsewhere in this module.
+    """
+    lat_deg = np.asarray(lat_deg, dtype=np.float64)
+    lng_deg = np.asarray(lng_deg, dtype=np.float64)
+    center_lat_deg = np.asarray(center_lat_deg, dtype=np.float64)
+    center_lng_deg = np.asarray(center_lng_deg, dtype=np.float64)
+    dy_km = (lat_deg - center_lat_deg) * KM_PER_DEG_LAT
+    dx_km = (lng_deg - center_lng_deg) * KM_PER_DEG_LAT * np.cos(np.radians(center_lat_deg))
+    return np.stack([dx_km, dy_km], axis=-1)
+
+
+def local_offset_km_to_latlon_np(
+    offset_km: np.ndarray, center_lat_deg: np.ndarray, center_lng_deg: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Inverse of `latlon_to_local_offset_km_np`: a local (dx_km, dy_km) offset (shape
+    (..., 2)) plus its center -> (lat_deg, lng_deg). Used at inference time to turn a
+    predicted cell (-> its centroid) + a predicted offset back into a real coordinate."""
+    offset_km = np.asarray(offset_km, dtype=np.float64)
+    center_lat_deg = np.asarray(center_lat_deg, dtype=np.float64)
+    center_lng_deg = np.asarray(center_lng_deg, dtype=np.float64)
+    dx_km, dy_km = offset_km[..., 0], offset_km[..., 1]
+    lat_deg = center_lat_deg + dy_km / KM_PER_DEG_LAT
+    lng_deg = center_lng_deg + dx_km / (KM_PER_DEG_LAT * np.cos(np.radians(center_lat_deg)))
+    return lat_deg, lng_deg
+
+
 # --------------------------------------------------------------------------------------
 # torch: differentiable, for use inside the training loop
 # --------------------------------------------------------------------------------------
@@ -139,3 +183,25 @@ def haversine_km_torch(
     a = torch.sin(dlat / 2) ** 2 + torch.cos(lat1) * torch.cos(lat2) * torch.sin(dlng / 2) ** 2
     a = torch.clamp(a, 0.0, 1.0)
     return 2 * EARTH_RADIUS_KM * torch.asin(torch.sqrt(a))
+
+
+def latlon_to_local_offset_km_torch(
+    lat_deg: "torch.Tensor",
+    lng_deg: "torch.Tensor",
+    center_lat_deg: "torch.Tensor",
+    center_lng_deg: "torch.Tensor",
+) -> "torch.Tensor":
+    """Torch counterpart of `latlon_to_local_offset_km_np` -- see its docstring."""
+    dy_km = (lat_deg - center_lat_deg) * KM_PER_DEG_LAT
+    dx_km = (lng_deg - center_lng_deg) * KM_PER_DEG_LAT * torch.cos(torch.deg2rad(center_lat_deg))
+    return torch.stack([dx_km, dy_km], dim=-1)
+
+
+def local_offset_km_to_latlon_torch(
+    offset_km: "torch.Tensor", center_lat_deg: "torch.Tensor", center_lng_deg: "torch.Tensor"
+) -> tuple["torch.Tensor", "torch.Tensor"]:
+    """Torch counterpart of `local_offset_km_to_latlon_np` -- see its docstring."""
+    dx_km, dy_km = offset_km.unbind(dim=-1)
+    lat_deg = center_lat_deg + dy_km / KM_PER_DEG_LAT
+    lng_deg = center_lng_deg + dx_km / (KM_PER_DEG_LAT * torch.cos(torch.deg2rad(center_lat_deg)))
+    return lat_deg, lng_deg

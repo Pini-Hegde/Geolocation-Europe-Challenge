@@ -157,24 +157,12 @@ classification, etc.).
 ---
 
 ## Open decision points still ahead
-- **Phase D direction, resolved 2026-08-18 (discussion only, not yet built):** after T2.1's full
-  5-fold result (459.9±19.4km, still 171.8km short of B1's 288.1km oracle ceiling, and its
-  `<200km` rate worse than B1's despite B1 ignoring the image entirely), decided to go straight
-  to **T3.1 task reformulation** (adaptive density-based geo-cell classification + offset
-  regression) rather than further Tier 2 backbone tuning — see `Experiment_Design.md` Tier 3 and
-  `Progress.md` Phase 5 for full reasoning. **Backbone finalized as StarNet-S1** (`timm`, 2.9M
-  params, 73.5% ImageNet top-1, CVPR 2024 "star operation" — a third architecture lineage
-  distinct from both the depthwise-separable-conv family and MobileViT's attention hybrid),
-  chosen over ParC-Net/MicroNet (both considered, both require external-repo integration since
-  neither is in `timm`) specifically because it's natively `timm`-available. **Deliberately
-  skipping a MobileViT-XS control run** on the same formulation (originally scoped to isolate the
-  formulation-change variable) — explicit user choice, flagged as a methodological trade-off: if
-  T3.1/StarNet-S1's result differs from T2.1's, it can't be attributed cleanly to the formulation
-  change alone since the backbone changed too. Also note for the writeup: the offset-regression
-  head is **not** part of the original PlaNet paper (PlaNet is pure cell classification) — it's
-  an original addition, justified by analogy to object-detection class+offset prediction; cite
-  PlaNet for the adaptive-cell idea only. **Implementation deferred to a future session on the
-  Alex cluster** — this was a planning/discussion session only.
+- **Phase D direction after T2.1: open (2026-08-19).** T2.1's full 5-fold result (459.9±19.4km,
+  still 171.8km short of B1's 288.1km oracle ceiling, and its `<200km` rate worse than B1's
+  despite B1 ignoring the image entirely) rules out further Tier 2 backbone tuning in isolation
+  as the next step, but the actual Tier 3 direction — architecture, formulation, everything — is
+  undecided. An earlier candidate (geo-cell classification + offset regression on a swapped
+  backbone) was explored and rolled back; next session starts this decision fresh.
 - Pretrained weights: **resolved 2026-08-17** — allowed, any source, as long as the
   submitted model is ≤5M params; fine-tuning on provided `train/` data is allowed. This
   reshapes Phase D candidate priorities (see `Experiment_Design.md` Tier 2+) — pretrained

@@ -1,0 +1,22 @@
+{
+  "backbone": "mobilevit_xs.cvnets_in1k",
+  "folds": [
+    0
+  ],
+  "epochs": 100,
+  "batch_size": 96,
+  "backbone_lr": 0.0002,
+  "head_lr": 0.002,
+  "weight_decay": 0.0005,
+  "dropout": 0.3,
+  "offset_weight": 1.0,
+  "country_weight": 1.0,
+  "input_size": 384,
+  "num_workers": 8,
+  "exp_name": "T3.1_hierarchical_mobilevit_xs_384_fold0_screen",
+  "fold_n_cells": {
+    "0": 96
+  },
+  "offset_scale_km": 100.0,
+  "huber_delta": 1.0
+}

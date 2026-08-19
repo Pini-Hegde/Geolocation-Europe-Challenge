@@ -1,0 +1,6 @@
+fold,n_train,n_val,n_cells,cell_size_min,cell_size_median,cell_size_max,cells_per_country_min,cells_per_country_max
+0,9406,2352,96,86,100.0,100,8,8
+1,9407,2351,96,86,100.0,100,8,8
+2,9406,2352,96,86,100.0,100,8,8
+3,9407,2351,96,86,100.0,100,8,8
+4,9406,2352,96,86,100.0,100,8,8

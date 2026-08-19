@@ -1,0 +1,22 @@
+{
+  "backbone": "fastvit_t8.apple_dist_in1k",
+  "folds": [
+    4
+  ],
+  "epochs": 100,
+  "batch_size": 128,
+  "backbone_lr": 0.0002,
+  "head_lr": 0.002,
+  "weight_decay": 0.0005,
+  "dropout": 0.3,
+  "offset_weight": 1.0,
+  "country_weight": 1.0,
+  "input_size": 224,
+  "num_workers": 8,
+  "exp_name": "T3.1_hier_fastvit_224_5fold",
+  "fold_n_cells": {
+    "4": 96
+  },
+  "offset_scale_km": 100.0,
+  "huber_delta": 1.0
+}
