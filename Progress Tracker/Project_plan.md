@@ -157,12 +157,15 @@ classification, etc.).
 ---
 
 ## Open decision points still ahead
-- **Phase D direction after T2.1: open (2026-08-19).** T2.1's full 5-fold result (459.9±19.4km,
-  still 171.8km short of B1's 288.1km oracle ceiling, and its `<200km` rate worse than B1's
-  despite B1 ignoring the image entirely) rules out further Tier 2 backbone tuning in isolation
-  as the next step, but the actual Tier 3 direction — architecture, formulation, everything — is
-  undecided. An earlier candidate (geo-cell classification + offset regression on a swapped
-  backbone) was explored and rolled back; next session starts this decision fresh.
+- **Phase D direction after T3.1/T3.4: open (2026-08-19).** T3.1 (hierarchical country->cell
+  classifier + offset regression, EfficientNet-B0) reached 193.0±4.2km, beating B1 by 95.1km.
+  T3.3+T3.6 (PIGEON soft labels + Clark et al. 2023 attention pooling, tried together per a
+  literature review, `literature.md`) regressed to 210.4±7.8km — reverted, archived in
+  `failed_experiments/`, primary cause isolated to T3.6 (the attention pool). **T3.4 (CPlaNet
+  combinatorial multi-partition cells) tried next and succeeded: new best 182.9±7.0km**,
+  beating T3.1 on every fold, gap to the ~114km reference target now 68.9km (down from 79km).
+  Open decision: push T3.4's K from 2 to 3 partitions (this run used the minimum to test the
+  mechanism cheaply first), or move to T3.5 (ISNs three-level hierarchy) — not yet decided.
 - Pretrained weights: **resolved 2026-08-17** — allowed, any source, as long as the
   submitted model is ≤5M params; fine-tuning on provided `train/` data is allowed. This
   reshapes Phase D candidate priorities (see `Experiment_Design.md` Tier 2+) — pretrained

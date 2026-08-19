@@ -1,0 +1,26 @@
+{
+  "backbone": "efficientnet_b0.ra_in1k",
+  "folds": [
+    3
+  ],
+  "n_partitions": 2,
+  "epochs": 100,
+  "batch_size": 128,
+  "backbone_lr": 0.0002,
+  "head_lr": 0.002,
+  "weight_decay": 0.0005,
+  "dropout": 0.3,
+  "offset_weight": 1.0,
+  "country_weight": 1.0,
+  "input_size": 224,
+  "num_workers": 8,
+  "exp_name": "T3.4_efficientnet_b0_224_5fold",
+  "fold_n_cells_per_partition": {
+    "3": [
+      96,
+      96
+    ]
+  },
+  "offset_scale_km": 100.0,
+  "huber_delta": 1.0
+}

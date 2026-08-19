@@ -25,6 +25,7 @@ import numpy as np
 from src.data.dataset import INPUT_SIZE
 from src.models.backbone_regressor import GeoBackboneRegressor
 from src.models.hierarchical_geo_classifier import HierarchicalGeoClassifierRegressor
+from src.models.multi_partition_geo_classifier import MultiPartitionGeoClassifierRegressor
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 OUT_DIR = REPO_ROOT / "outputs" / "protocol" / "param_check"
@@ -120,6 +121,65 @@ def check_compliance_hierarchical_model(
     assert compliant, (
         f"{backbone_name} (hierarchical) with n_cells={n_cells} has {n_params:,} params "
         f"at input_size={input_size}, over the {PARAM_LIMIT:,} limit."
+    )
+    return result
+
+
+def check_compliance_multi_partition_model(
+    backbone_name: str,
+    n_cells_per_partition: list[int],
+    pretrained: bool = True,
+    input_size: int = INPUT_SIZE,
+) -> dict:
+    """T3.4 counterpart of `check_compliance_hierarchical_model`, for
+    `MultiPartitionGeoClassifierRegressor` -- K classification heads instead of 1. Uses dummy
+    all-zeros `cell_to_country` per partition, same reasoning as the hierarchical checker
+    (fixed buffer data, not a learned weight -- doesn't affect param count)."""
+    dummy_cell_to_country = [np.zeros(n, dtype=np.int64) for n in n_cells_per_partition]
+    model = MultiPartitionGeoClassifierRegressor(
+        backbone_name, n_cells_per_partition=n_cells_per_partition,
+        cell_to_country_per_partition=dummy_cell_to_country, pretrained=pretrained,
+    )
+    n_params = count_params(model)
+    n_backbone = count_params(model.backbone)
+    n_head = (
+        count_params(model.country_head) + count_params(model.cls_heads)
+        + count_params(model.offset_head)
+    )
+
+    model.eval()
+    with torch.no_grad():
+        dummy = torch.randn(1, 3, input_size, input_size)
+        cell_logits_list, offset, country_logits = model(dummy)
+    assert len(cell_logits_list) == len(n_cells_per_partition), (
+        f"expected {len(n_cells_per_partition)} partition logit tensors, "
+        f"got {len(cell_logits_list)}"
+    )
+    for k, (logits, n_cells) in enumerate(zip(cell_logits_list, n_cells_per_partition)):
+        assert logits.shape == (1, n_cells), (
+            f"partition {k}: expected cell logits shape (1, {n_cells}), got {tuple(logits.shape)}"
+        )
+    assert offset.shape == (1, 2), f"expected offset shape (1, 2), got {tuple(offset.shape)}"
+    from src.geo.countries import N_COUNTRIES
+    assert country_logits.shape == (1, N_COUNTRIES), (
+        f"expected country logits shape (1, {N_COUNTRIES}), got {tuple(country_logits.shape)}"
+    )
+
+    compliant = n_params <= PARAM_LIMIT
+    result = {
+        "backbone_name": backbone_name,
+        "pretrained": pretrained,
+        "input_size": input_size,
+        "n_cells_per_partition": n_cells_per_partition,
+        "n_params_total": n_params,
+        "n_params_backbone": n_backbone,
+        "n_params_head": n_head,
+        "param_limit": PARAM_LIMIT,
+        "compliant": compliant,
+    }
+    assert compliant, (
+        f"{backbone_name} (multi-partition, n_cells_per_partition={n_cells_per_partition}) "
+        f"has {n_params:,} params at input_size={input_size}, over the {PARAM_LIMIT:,} limit."
     )
     return result
 

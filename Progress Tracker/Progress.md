@@ -5,11 +5,14 @@ Detailed experiment numbers live in `Experiment_Design.md` (results log) — thi
 experiment IDs (e.g. `T1.1`) rather than repeating scores, to avoid two files going out of sync.
 Update this at the end of every work session.
 
-**Current phase:** Phase 5 — Architecture experiments. Hierarchical country->cell classifier +
-offset regression, 3-backbone full 5-fold comparison at 224px done: **EfficientNet-B0 wins,
-193.0 ± 4.2km** (best result so far, beats B1's 288.1km oracle by 95.1km). FastViT-T8
-213.4±10.1km, MobileViT-XS 240.7±12.1km. Deciding next step (finalize EfficientNet-B0, or
-push further toward the ~114km reference target).
+**Current phase:** Phase 5 — Architecture experiments. **New best result: 182.9 ± 7.0km**
+(T3.4, combinatorial multi-partition cells, EfficientNet-B0) — beats T3.1's 193.0±4.2km
+baseline on every single fold, and B1's 288.1km oracle by 105.2km. Gap to the ~114km
+reference target: 68.9km. T3.3+T3.6 (soft labels + attention pooling) were tried first and
+regressed (210.4±7.8km) — reverted, archived in `failed_experiments/` (new convention:
+archive, don't delete). T3.4 succeeded where those failed because it doesn't add a new
+learned module — it changes the cell-label structure (K=2 independent partitions, blended at
+eval) on top of the exact same T3.1 architecture. K=3 code ready, jobs paused (cluster busy, user stopped work).
 **Last updated:** 2026-08-19
 
 ---
@@ -222,6 +225,22 @@ candidate, `timm` added as a dependency).
         240.7±12.1km. All three beat B1 (288.1km). Gap to the ~114km reference target
         narrowed from 174.8km (B1) to 79km (EfficientNet-B0).
 - [ ] T3.2 — multi-task with country auxiliary head
+- [x] **T3.3 + T3.6 combined — REGRESSED, 2026-08-19, reverted.** Combined 210.4±7.8km vs.
+      T3.1's 193.0±4.2km. Isolated: T3.6-only (230.3km) was the primary culprit, worse than
+      the combined run and the only condition that also hurt country acc; T3.3-only (200.5km)
+      was closer to neutral. Code reverted to plain T3.1; archived (not deleted) in
+      `failed_experiments/T3.3_T3.6_soft_labels_attention_pool/` — see that folder's README
+      and `Experiment_Design.md` Tier 3 for full numbers/reasoning. **Project convention from
+      here on: archive failed experiment code+artifacts in `failed_experiments/`, don't
+      delete.**
+- [x] **T3.4 — combinatorial/multi-partition cells — SUCCESS, 2026-08-19.** New best:
+      **182.9 ± 7.0km** (full 5-fold), beats T3.1 on every fold (see `Experiment_Design.md`
+      for full numbers/reasoning). `src/protocol/geo_cells_multi.py`,
+      `src/models/multi_partition_geo_classifier.py`, `src/train_multi_partition.py`.
+- [ ] T3.5 — three-level country->region->cell hierarchy (see `literature.md` §1, ISNs)
+- [~] T3.4 K=3 partitions — code ready, cells built, param-checked (4,394,410, compliant).
+      Smoke test queued then cancelled (GPU cluster fully saturated, user paused work).
+      Not yet run. Next: resubmit smoke test, then fold-0 screen vs. K=2's 182.4km.
 - [ ] T4.1 — mixture density output (optional stretch)
 - [ ] T5.1 — two-model ensemble (combined ≤5M params, verified) (optional stretch)
 - [ ] T5.2 — test-time augmentation on best model (optional stretch)
@@ -364,3 +383,120 @@ candidate, `timm` added as a dependency).
   smoke test (job 4043921, COMPLETED in ~1min). Submitted the fold-0 screen (job 4043929, 100
   epochs, 384px) — epoch 1 already at 48.2% country acc / 14.1% cell acc, well above the
   rolled-back version's equivalent-epoch numbers. Result pending.
+- **2026-08-19 (cont.)**: Fold-0 screen came in at 225.3km; switched default resolution to
+  224px for a controlled 3-backbone comparison (EfficientNet-B0, FastViT-T8, MobileViT-XS),
+  all full 5-fold. **EfficientNet-B0 won: 193.0 ± 4.2km**, new best result, beats B1 by
+  95.1km. User asked to push further and requested a literature review before picking the
+  next architecture direction, rather than guessing. Researched the actual research lineage
+  for CNN-based photo geolocation (PlaNet, CPlaNet, ISNs, TransLocator, PIGEON, GeoCLIP,
+  MDN-based approaches) via web search for accurate citations, wrote `literature.md` —
+  filtered every idea through our actual constraints (11.7k images, 5M params, no external
+  data) rather than assuming anything ports as-is. Cross-referenced findings against our own
+  diagnosis (cell accuracy 41.8% is the bottleneck, not offset precision) and ranked
+  candidates by fit + cost: **T3.3 (PIGEON's haversine-smoothed soft cell labels)** is the
+  clear next step — zero new params, no architecture change, directly targets cell-boundary
+  misclassification, which plausibly explains a real chunk of the current 58.2% wrong-cell
+  rate. T3.4 (CPlaNet's combinatorial multi-partition cells) queued as the follow-up if T3.3
+  doesn't close enough of the gap alone; T3.5 (ISNs' three-level hierarchy) as a higher-cost
+  fallback. Scene-branch/segmentation ideas (ISNs, TransLocator) considered and explicitly
+  not recommended — need labels/tools we don't have without touching the external-data
+  boundary. Updated `Experiment_Design.md` Tier 3 (T3.1 marked done with its real result,
+  T3.3-T3.5 added) and this file's checklist accordingly. Next: implement and screen T3.3.
+- **2026-08-19 (cont.)**: User asked what architecture change specifically (not just T3.3's
+  loss change) would push results further. Fetched Clark et al. 2023's actual architecture
+  (not just search snippets) via WebFetch to get it right before implementing: Swin backbone
+  (not portable), learned-query cross-attention over spatial tokens instead of GAP (T3.6, the
+  portable core idea), shared-then-specialized decoder staging, 7-level S2 hierarchy (+1.5%
+  @1km going 3->7 levels, supports T3.5 eventually), scene queries (not portable, external
+  data). Logged full technical detail into `literature.md` for accuracy. Implemented both
+  T3.3 and T3.6: new `src/models/attention_pool.py` (`QueryAttentionPool` -- 2 queries,
+  1 shared cross-attn layer + 2 specialized FFN branches, token dim reduced to 128 to stay
+  in budget -- naive full-width attention would have cost ~6.5M params by itself, over budget
+  alone), `hierarchical_geo_classifier.py` gained a `pooling={gap,attention}` switch (default
+  attention), `train_hierarchical.py` gained `soft_cell_targets()` (haversine-smoothed target
+  distribution, `tau=50km`, a tuned guess not from the paper) and `--soft-cell-labels`
+  (default on). Verified param compliance for all 3 backbones (EfficientNet-B0: 4,450,794,
+  still compliant) and ran a full CPU sanity pass (forward/backward, soft-target sums to 1,
+  zero mass outside the true country's cells) before touching GPU.
+  User asked to run all 5 folds in parallel (not the usual fold-0-then-decide gate) for
+  speed, accepting the tradeoff explicitly. Smoke test hit real infra friction first: `a40`
+  and `a100` partitions were both fully saturated (cluster-wide, confirmed via `sinfo`/
+  `scontrol`), so tried `rtxpro6k` (had genuinely free GPUs per `scontrol show node`) --
+  that job ran 10 minutes with ZERO output (not even the shell's own first `echo`) before
+  TIMEOUT killed it. Root-caused via the job's own `nvidia-smi -L` output: `rtxpro6k` nodes
+  have an **NVIDIA RTX PRO 6000 Blackwell** GPU, a much newer architecture than every
+  previously-validated node (`a40`/`a100`, Ada/Ampere) -- our pinned `torch 2.13.0+cu130`
+  almost certainly has no precompiled kernels for it, so the first CUDA call likely fell into
+  slow JIT compilation, looking exactly like a hang. Reverted to `a40` (queued ~15min, then
+  ran) rather than gamble on an unvalidated GPU generation -- smoke test PASSED cleanly there
+  (job 4049825, 76.6s/epoch at batch=16, correct param count, full train/eval loop).
+  **Full 5-fold result (jobs 4049847-4049851): 210.4 ± 7.8km, cell acc 36.1%, country acc
+  72.8% -- a REGRESSION vs. T3.1's 193.0 ± 4.2km / cell acc 41.8%.** Consistent across every
+  fold (cell acc landed in a tight 35.0-35.5% band vs. T3.1's 41-43% band, near-zero
+  variance), country accuracy exactly flat -- damage is real and specifically localized to
+  cell classification, not noise. This is the exact attribution problem flagged before
+  agreeing to run both changes together: can't tell from this result alone whether T3.3,
+  T3.6, or their interaction is responsible. Submitted two isolation screens, fold-0 only:
+  T3.6-only (job 4053329, hard labels + attention pooling) and T3.3-only (job 4053330, soft
+  labels + plain GAP), both to compare against T3.1's actual fold-0 number (191.7km, cell
+  42.6%). Next: read those two results, diagnose which change (or interaction) caused the
+  regression, decide whether either is salvageable (e.g. a smaller/better-initialized
+  attention pool, a different tau) or whether to drop both and move to T3.4/T3.5 instead.
+- **2026-08-19 (cont.)**: Both isolation screens converged. **T3.6-only (attention pool, hard
+  labels): 230.3km** (epoch 86, cell acc 37.5%, country acc 70.9%) — worse than even the
+  combined run (218.1km), and the only condition of the four where country accuracy also
+  dropped, clearly implicating T3.6 as the primary cause rather than an interaction effect.
+  **T3.3-only (soft labels, plain GAP): 200.5km** (epoch 84, cell acc 37.7%, country acc
+  72.9%) — much closer to neutral (+8.8km vs. baseline), not proven but not clearly harmful
+  either. Full 4-way table (baseline / T3.3-only / combined / T3.6-only) logged in
+  `Experiment_Design.md` Tier 3. User decided to revert both to the T3.1 baseline and,
+  **starting now, archive failed experiment code+artifacts instead of deleting them** (a
+  change from the earlier StarNet-S1 rollback, which was deleted outright) — created
+  `failed_experiments/` at repo root as the standing convention for this and every future
+  failed attempt. Reverted `src/models/hierarchical_geo_classifier.py`,
+  `src/train_hierarchical.py`, `src/protocol/param_check.py` to their exact pre-T3.3/T3.6
+  content (not just defaulted the new flags off) so the active pipeline has no trace of the
+  regressed code path. Moved `src/models/attention_pool.py` and all four T3.3/T3.6 sbatch
+  scripts into `failed_experiments/T3.3_T3.6_soft_labels_attention_pool/`, plus the four
+  experiment output directories (smoke test, combined 5-fold, both isolation screens), plus a
+  README summarizing what was tried, the full numbers, the diagnosis, and what to try if
+  revisited (T3.3 with a tuned tau, not T3.6 as designed). Verified the revert is clean:
+  `python -m py_compile` passes on all three reverted files, and
+  `check_compliance_hierarchical_model` for EfficientNet-B0 now reports exactly
+  4,148,458 params again (the original T3.1 count, confirming no attention-pool params
+  survived). Next: T3.4 (combinatorial multi-partition cells) — see `Experiment_Design.md`.
+- **2026-08-19 (cont.)**: Implemented T3.4. Threaded an optional `rng` param through
+  `geo_cells.py`'s existing `build_node`/`build_fold` (randomized split-axis choice; `None`
+  default reproduces the canonical T3.1 partition exactly, verified) rather than duplicating
+  the partition-building logic. New `geo_cells_multi.py` builds K=2 independent per-country
+  partitions per fold (same MIN=40/MAX=120 as T3.1); verified real structural diversity
+  (e.g. Germany splits on `lng` in partition 0 but `lat` in partition 1) before trusting it.
+  Extended `dataset.py` additively (`load_fold_cells_multi`, `blended_centroid_np` --
+  spherical mean, consistent with the project's existing convention -- and a
+  `multi_cell_info` path on `GeoDataset` alongside, not replacing, the existing `cell_info`
+  path). New model `MultiPartitionGeoClassifierRegressor`
+  (`src/models/multi_partition_geo_classifier.py`) in its own file rather than a flag on
+  `hierarchical_geo_classifier.py` -- explicit decision to not repeat the T3.3/T3.6 pattern
+  of modifying the working baseline in place. New `check_compliance_multi_partition_model`
+  (param_check.py, additive) and `train_multi_partition.py` (new script, parallel structure
+  to train_hierarchical.py). Verified compliant (4,271,434 params) and ran a full CPU sanity
+  pass before GPU -- notably, the untrained model's random-init numbers landed almost exactly
+  at the theoretical random baseline (cell acc ~1% = 1/96, country acc ~8% = 1/12), a good
+  sign the wiring was correct before spending any GPU time. Smoke test (job 4054609) passed
+  cleanly on `a40`. Fold-0 screen (job 4054693) beat T3.1's fold-0 baseline (191.7km) partway
+  through training and held the lead through convergence: **180.96km at epoch 75** -- a real
+  win, not a mid-training artifact. Ran the full 5-fold grid (jobs 4055791-4055795, one job
+  per fold, all 5 running concurrently on separate `a40` GPUs -- user explicitly confirmed
+  this is the intended workflow, not everything bundled into one job). **Result: 182.9 ±
+  7.0km, beating T3.1's 193.0 ± 4.2km on every single fold** (fold deltas: -9.3, -4.8, -14.7,
+  -10.7, -10.9km) -- confirms this is a robust, general improvement, not one lucky fold.
+  Cell acc (42.1%) and country acc (72.7%) both landed essentially unchanged from T3.1
+  (41.8%/72.8%), confirming the entire gain comes from the blending mechanism itself (two
+  independently-imperfect coarse cell picks triangulating a better point), exactly the
+  CPlaNet mechanism this was designed to test -- not from the model getting better at the
+  underlying classification task. **New best result, gap to the ~114km reference target down
+  to 68.9km** (from T3.1's 79km). Added `slurm/train_multi_partition_fold.sbatch` as the
+  reusable template (the actual 5-fold submission used an equivalent `sbatch --wrap` for
+  speed; the template is on record for reproducibility). Next: decide between pushing K to 3
+  partitions (this run used the minimum K=2 to test the mechanism cheaply first) or moving to
+  T3.5 -- open decision, not yet made.

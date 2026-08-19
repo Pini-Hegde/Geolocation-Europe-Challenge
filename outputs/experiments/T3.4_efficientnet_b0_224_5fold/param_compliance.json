@@ -1,0 +1,14 @@
+{
+  "backbone_name": "efficientnet_b0.ra_in1k",
+  "pretrained": true,
+  "input_size": 224,
+  "n_cells_per_partition": [
+    96,
+    96
+  ],
+  "n_params_total": 4271434,
+  "n_params_backbone": 4007548,
+  "n_params_head": 263886,
+  "param_limit": 5000000,
+  "compliant": true
+}

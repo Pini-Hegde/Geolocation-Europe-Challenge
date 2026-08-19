@@ -182,20 +182,68 @@ axes, not a single ladder.
   a concrete, evidenced number instead of an assumed claim.
 
 ### Tier 3 — Task reformulation (backbone and formulation both open)
-T2.1's full 5-fold result (459.9±19.4km) is still 171.8km short of B1 (288.1km), and its
-`<200km` rate (17.8%) is *worse* than B1's (28%) — a baseline that doesn't look at the image
-at all. That points at country/region-level confusion rather than a backbone-precision
-ceiling, so a same-formulation backbone swap (T2.1b/T2.2-2.4) is not the current priority.
-**Direction after T2.1 is under active discussion (2026-08-19) — nothing below is decided.**
-An earlier candidate (adaptive geo-cell classification + offset regression, PlaNet-inspired,
-on a swapped backbone) was explored and rolled back; revisiting the tier from scratch.
-- **T3.1 (placeholder) Classification + offset regression (grid-cell hybrid)**: partition the
-  map into cells (density-adaptive, so large/sparse countries like Norway/Spain/Turkey get
-  proportionally more cells than compact ones, per B1's per-country breakdown), classify which
-  cell, regress an offset within it. Backbone, partitioning method, and cell count all open.
+T2.1's full 5-fold result (459.9±19.4km) was 171.8km short of B1 (288.1km); pointed at
+country/region-level confusion, not backbone precision, ruling out a same-formulation
+backbone swap as the next step.
+
+- **T3.1 Hierarchical country -> per-country-cell classifier + offset regression** —
+  **DONE, 2026-08-19.** Hard-masked (not soft-gated) hierarchical head, cells built
+  independently per country (96 cells/fold, 8/country, ~100 img/cell), 224px, backbone
+  compared 3 ways. **Best: EfficientNet-B0, 193.0 ± 4.2km** (cell acc 41.8%, country acc
+  72.8%) — beats B1 by 95.1km, current best reportable number. Full story (incl. the
+  rolled-back flat-classifier/soft-gate attempt that preceded this design) in the results log
+  below and `Progress.md` §T3.1. **Diagnosed bottleneck: cell-classification accuracy
+  (41.8%)**, not offset precision within a correctly-picked cell — motivates T3.3/T3.4 below
+  over further backbone tuning.
 - **T3.2 Multi-task with country auxiliary head**: shared backbone, joint loss = spherical
   regression loss + country classification loss, using the provided `country` label as free
-  extra supervision.
+  extra supervision. Not yet run — largely superseded by T3.1's explicit country head, kept
+  as a comparison point (implicit soft aux-loss vs. T3.1's hard-masked explicit head) if
+  useful for the writeup narrative.
+- **T3.3 Haversine-smoothed soft cell labels** + **T3.6 Per-head query attention pooling** —
+  **tried together, 2026-08-19, REGRESSED. Reverted; archived (not deleted) in
+  `failed_experiments/T3.3_T3.6_soft_labels_attention_pool/`** (full README there — project
+  convention from this experiment onward is to archive failed attempts rather than delete
+  them, per user decision). Combined full 5-fold: **210.4 ± 7.8km** vs. T3.1's 193.0 ± 4.2km —
+  a clear regression, consistent across every fold (cell acc 36.1% vs. 41.8%, country acc
+  flat at 72.8%). Isolated on fold-0 to find the culprit: T3.6-only (attention pool, hard
+  labels) **230.3km** (cell acc 37.5%, country acc dropped to 70.9% — the only condition
+  where country also degraded) was *worse* than the combined run, clearly the primary cause.
+  T3.3-only (soft labels, plain GAP) **200.5km** was much closer to neutral (+8.8km, one fold
+  only) — not proven, not clearly ruled out either. Diagnosis: T3.6's mechanism (Clark et al.
+  2023) was validated with 6 shared + 2 specialized transformer layers on 4.72M images; this
+  project's necessarily-smaller port (1 shared layer + 2 specialized FFNs, ~9.4k images/fold)
+  likely didn't have enough signal for randomly-initialized attention to beat a simple
+  pretrained-GAP-then-linear-probe — a genuine, evidenced case of complexity not earning its
+  place (`Experiment_Design.md`'s own guiding principle). Code reverted to plain T3.1
+  (`pooling` switch and `attention_pool.py` removed entirely, not just defaulted off). If
+  revisited: T3.3 alone with a tuned `tau` (this used a single untuned guess, 50km) is the
+  more promising thread, not T3.6.
+- **T3.4 Combinatorial/multi-partition cells** (from `literature.md` §1, CPlaNet) — **DONE,
+  2026-08-19. NEW BEST RESULT: 182.9 ± 7.0km** (full 5-fold, EfficientNet-B0), beating T3.1
+  by 10.1km — **on every single fold**, not just on average (fold-by-fold: -9.3, -4.8, -14.7,
+  -10.7, -10.9km). Design: K=2 independent per-country KD-tree partitions of the same points
+  (`src/protocol/geo_cells_multi.py`, randomized split-axis choice via an optional `rng` on
+  `geo_cells.py`'s existing builder — the canonical T3.1 partition is untouched, verified),
+  same MIN=40/MAX=120 cell-size constraints as T3.1 so per-partition difficulty is unchanged.
+  New model `MultiPartitionGeoClassifierRegressor`
+  (`src/models/multi_partition_geo_classifier.py`, T3.1's file kept untouched on principle —
+  see `failed_experiments/T3.3_T3.6_soft_labels_attention_pool/`) — K parallel country-masked
+  cell heads, one shared offset head, params 4,271,434 (compliant). At eval, the K
+  independently-argmaxed predicted cell centroids are combined via spherical mean
+  (`blended_centroid_np`) before the offset is added. **Cell acc (42.1%) and country acc
+  (72.7%) are both essentially unchanged from T3.1 (41.8%/72.8%)** — confirms the entire gain
+  comes from the blending mechanism itself (two independently-imperfect coarse picks
+  triangulating a better point), exactly the CPlaNet mechanism this was designed to test, not
+  from the model getting better at classification. Lower risk than T3.6 by design: no new
+  randomly-initialized module competing for gradient signal, just K small linear heads on the
+  same pretrained backbone. Gap to the ~114km reference target: 79km (T3.1) -> **68.9km**.
+  Next: could push further with K=3 (this used the minimum K=2 to test the mechanism cheaply
+  first), or move to T3.5 if diminishing returns from more partitions seem likely.
+- **T3.5 Three-level hierarchy (country -> region -> cell)** (from `literature.md` §1, ISNs) —
+  an extra intermediate classification level between country and cell. Higher cost (one more
+  head/masking stage) than T3.4 — only pursue if T3.4 doesn't close enough of the gap on its
+  own.
 
 ### Tier 4 — Best backbone + best formulation, advanced variants (OPTIONAL / stretch — only pursue if Tier 1-3 error analysis specifically motivates one of these)
 - **T4.1 Mixture density output**: small mixture of von Mises-Fisher (spherical analogue of a

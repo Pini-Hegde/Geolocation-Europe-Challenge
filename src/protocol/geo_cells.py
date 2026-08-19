@@ -95,9 +95,20 @@ class _LeafIdCounter:
         return cell_id
 
 
-def build_node(lat: np.ndarray, lng: np.ndarray, idx: np.ndarray, counter: _LeafIdCounter) -> dict:
+def build_node(
+    lat: np.ndarray, lng: np.ndarray, idx: np.ndarray, counter: _LeafIdCounter,
+    rng: "np.random.Generator | None" = None,
+) -> dict:
     """Recursively partition points at positional indices `idx` (already filtered to one
-    country) into a KD-tree of cells. `lat`/`lng` are that country's full training arrays."""
+    country) into a KD-tree of cells. `lat`/`lng` are that country's full training arrays.
+
+    `rng` (T3.4, `geo_cells_multi.py`): when given, the split-axis choice is randomized
+    (50/50 instead of always "larger-range axis first") so that calling this with different
+    RNGs produces genuinely different, independently-shaped partitions of the SAME points --
+    used to build multiple coarse partitionings for T3.4's combinatorial-cell candidate.
+    `rng=None` (the default, used by every existing caller/output in this module) preserves
+    the exact original deterministic behavior -- the canonical single partition T3.1 and
+    every result logged before T3.4 depends on is untouched by this parameter's existence."""
     node_lat = lat[idx]
     node_lng = lng[idx]
     lat_range = float(node_lat.max() - node_lat.min())
@@ -111,7 +122,10 @@ def build_node(lat: np.ndarray, lng: np.ndarray, idx: np.ndarray, counter: _Leaf
     if lat_range == 0.0 and lng_range == 0.0:
         return make_leaf()
 
-    axis_order = ["lat", "lng"] if lat_range >= lng_range else ["lng", "lat"]
+    if rng is not None:
+        axis_order = list(rng.choice(["lat", "lng"], size=2, replace=False))
+    else:
+        axis_order = ["lat", "lng"] if lat_range >= lng_range else ["lng", "lat"]
     for axis in axis_order:
         vals = node_lat if axis == "lat" else node_lng
         if float(vals.max() - vals.min()) == 0.0:
@@ -151,7 +165,11 @@ def collect_leaves(node: dict, out: list[dict]) -> None:
         collect_leaves(node["right"], out)
 
 
-def build_fold(df: pd.DataFrame, fold_id: int) -> dict:
+def build_fold(
+    df: pd.DataFrame, fold_id: int, rng: "np.random.Generator | None" = None
+) -> dict:
+    """`rng`: see `build_node`'s docstring -- None (default) reproduces the exact canonical
+    partition every existing experiment depends on."""
     train_df = df[df["fold"] != fold_id].reset_index(drop=True)
     val_df = df[df["fold"] == fold_id].reset_index(drop=True)
 
@@ -163,7 +181,7 @@ def build_fold(df: pd.DataFrame, fold_id: int) -> dict:
         country_train = train_df[train_df["country"] == country].reset_index(drop=True)
         lat = country_train["lat"].to_numpy()
         lng = country_train["lng"].to_numpy()
-        tree = build_node(lat, lng, np.arange(len(country_train)), counter)
+        tree = build_node(lat, lng, np.arange(len(country_train)), counter, rng=rng)
         country_trees[country] = tree
 
         leaves: list[dict] = []

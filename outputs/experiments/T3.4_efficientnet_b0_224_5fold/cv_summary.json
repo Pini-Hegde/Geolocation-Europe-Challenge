@@ -1,0 +1,134 @@
+{
+  "backbone": "efficientnet_b0.ra_in1k",
+  "input_size": 224,
+  "folds_run": [
+    0,
+    1,
+    2,
+    3,
+    4
+  ],
+  "cv_median_km_mean": 182.9476850938758,
+  "cv_median_km_std": 6.963143716670697,
+  "cv_mean_km_mean": 530.053399512992,
+  "cv_cell_top1_acc_mean": 0.4205643603677115,
+  "cv_country_top1_acc_mean": 0.7270798791656178,
+  "per_fold": {
+    "0": {
+      "best_epoch": 88,
+      "best_val_median_km": 182.36052593099376,
+      "n_cells_per_partition": [
+        96,
+        96
+      ],
+      "epoch": 99,
+      "train_cls_loss": 0.013087674184408907,
+      "train_offset_loss": 0.05184988958174235,
+      "train_country_loss": 0.009313330067040985,
+      "median_km": 188.65413635595897,
+      "mean_km": 529.2990422637446,
+      "frac_lt_200km": 0.5106292517006803,
+      "frac_lt_750km": 0.7699829931972789,
+      "cell_top1_acc_per_partition": [
+        0.4192176870748299,
+        0.42857142857142855
+      ],
+      "cell_top1_acc": 0.42389455782312924,
+      "country_top1_acc": 0.7266156462585034,
+      "epoch_time_s": 15.358421087265015
+    },
+    "1": {
+      "best_epoch": 79,
+      "best_val_median_km": 195.04615692922314,
+      "n_cells_per_partition": [
+        96,
+        96
+      ],
+      "epoch": 99,
+      "train_cls_loss": 0.015079335398869971,
+      "train_offset_loss": 0.05150307515916759,
+      "train_country_loss": 0.009914616390756548,
+      "median_km": 198.186704097422,
+      "mean_km": 556.0908494627387,
+      "frac_lt_200km": 0.5019140791152701,
+      "frac_lt_750km": 0.7596767333049766,
+      "cell_top1_acc_per_partition": [
+        0.4227988090174394,
+        0.41556784347086345
+      ],
+      "cell_top1_acc": 0.41918332624415144,
+      "country_top1_acc": 0.7213951509995746,
+      "epoch_time_s": 16.702719926834106
+    },
+    "2": {
+      "best_epoch": 89,
+      "best_val_median_km": 178.8992980815716,
+      "n_cells_per_partition": [
+        96,
+        96
+      ],
+      "epoch": 99,
+      "train_cls_loss": 0.013737502578033568,
+      "train_offset_loss": 0.05432378602762745,
+      "train_country_loss": 0.011064059764452993,
+      "median_km": 182.60438883261548,
+      "mean_km": 558.2680458353649,
+      "frac_lt_200km": 0.5174319727891157,
+      "frac_lt_750km": 0.7461734693877551,
+      "cell_top1_acc_per_partition": [
+        0.42304421768707484,
+        0.41624149659863946
+      ],
+      "cell_top1_acc": 0.41964285714285715,
+      "country_top1_acc": 0.7117346938775511,
+      "epoch_time_s": 15.919342517852783
+    },
+    "3": {
+      "best_epoch": 75,
+      "best_val_median_km": 177.9942079560117,
+      "n_cells_per_partition": [
+        96,
+        96
+      ],
+      "epoch": 99,
+      "train_cls_loss": 0.012378155234690807,
+      "train_offset_loss": 0.05112924396175228,
+      "train_country_loss": 0.010784320150540299,
+      "median_km": 178.9455229962388,
+      "mean_km": 492.8410429066825,
+      "frac_lt_200km": 0.5236069757549979,
+      "frac_lt_750km": 0.7881752445767758,
+      "cell_top1_acc_per_partition": [
+        0.4172692471288813,
+        0.4181199489578903
+      ],
+      "cell_top1_acc": 0.4176945980433858,
+      "country_top1_acc": 0.7379838366652488,
+      "epoch_time_s": 15.860640048980713
+    },
+    "4": {
+      "best_epoch": 77,
+      "best_val_median_km": 180.438236571579,
+      "n_cells_per_partition": [
+        96,
+        96
+      ],
+      "epoch": 99,
+      "train_cls_loss": 0.013443469305918233,
+      "train_offset_loss": 0.054247626856173556,
+      "train_country_loss": 0.010194819777795714,
+      "median_km": 185.25474137954353,
+      "mean_km": 513.7680170964295,
+      "frac_lt_200km": 0.5204081632653061,
+      "frac_lt_750km": 0.7733843537414966,
+      "cell_top1_acc_per_partition": [
+        0.421343537414966,
+        0.42346938775510207
+      ],
+      "cell_top1_acc": 0.422406462585034,
+      "country_top1_acc": 0.7376700680272109,
+      "epoch_time_s": 14.600910663604736
+    }
+  },
+  "aggregated_from_separate_jobs": true
+}

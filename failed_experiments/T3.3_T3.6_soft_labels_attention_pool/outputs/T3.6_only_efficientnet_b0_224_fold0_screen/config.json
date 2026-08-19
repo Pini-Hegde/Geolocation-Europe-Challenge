@@ -1,0 +1,29 @@
+{
+  "backbone": "efficientnet_b0.ra_in1k",
+  "folds": [
+    0
+  ],
+  "epochs": 100,
+  "batch_size": 128,
+  "backbone_lr": 0.0002,
+  "head_lr": 0.002,
+  "weight_decay": 0.0005,
+  "dropout": 0.3,
+  "offset_weight": 1.0,
+  "country_weight": 1.0,
+  "input_size": 224,
+  "num_workers": 8,
+  "exp_name": "T3.6_only_efficientnet_b0_224_fold0_screen",
+  "pooling": "attention",
+  "attn_dim": 128,
+  "attn_heads": 4,
+  "attn_ffn_dim": 256,
+  "attn_dropout": 0.1,
+  "soft_cell_labels": false,
+  "cell_label_tau_km": 50.0,
+  "fold_n_cells": {
+    "0": 96
+  },
+  "offset_scale_km": 100.0,
+  "huber_delta": 1.0
+}

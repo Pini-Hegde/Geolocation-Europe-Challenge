@@ -1,0 +1,16 @@
+{
+  "best_epoch": 86,
+  "best_val_median_km": 230.27419269225163,
+  "n_cells": 96,
+  "epoch": 99,
+  "train_cls_loss": 0.013891470044443053,
+  "train_offset_loss": 0.09101937629588663,
+  "train_country_loss": 0.012628870046608252,
+  "median_km": 241.41186856392738,
+  "mean_km": 583.4755219733935,
+  "frac_lt_200km": 0.4557823129251701,
+  "frac_lt_750km": 0.7508503401360545,
+  "cell_top1_acc": 0.375,
+  "country_top1_acc": 0.7087585034013606,
+  "epoch_time_s": 14.46013617515564
+}

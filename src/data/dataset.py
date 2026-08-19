@@ -30,13 +30,18 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
 from src.geo.countries import COUNTRY_TO_IDX
-from src.geo.spherical import latlon_to_local_offset_km_np, latlon_to_unit_vector_np
+from src.geo.spherical import (
+    latlon_to_local_offset_km_np,
+    latlon_to_unit_vector_np,
+    unit_vector_to_latlon_np,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IMAGES_DIR = REPO_ROOT / "geo_dataset" / "train"
 LABELS_CSV = REPO_ROOT / "geo_dataset" / "train_labels.csv"
 FOLDS_JSON = REPO_ROOT / "outputs" / "protocol" / "folds" / "folds.json"
 GEO_CELLS_DIR = REPO_ROOT / "outputs" / "protocol" / "geo_cells"
+GEO_CELLS_MULTI_DIR = REPO_ROOT / "outputs" / "protocol" / "geo_cells_multi"
 
 # MobileViT (cvnets recipe, via timm) expects [0, 1]-scaled RGB, no ImageNet mean/std
 # normalization (verified via timm.data.resolve_data_config: mean=(0,0,0), std=(1,1,1)) --
@@ -82,6 +87,48 @@ def load_fold_cells(val_fold: int) -> dict:
     }
 
 
+def load_fold_cells_multi(val_fold: int, n_partitions: int) -> dict:
+    """T3.4: same as `load_fold_cells`, but for the K independent partitions built by
+    `src/protocol/geo_cells_multi.py` (`outputs/protocol/geo_cells_multi/fold{f}_p{k}_cells.json`).
+    Returns per-partition lists (index k = partition k) of n_cells/centroids/cell_to_country/
+    assignments -- same shape as `load_fold_cells`'s single-partition dict, just K of them."""
+    n_cells_list, centroids_list, cell_to_country_list, assignments_list = [], [], [], []
+    for k in range(n_partitions):
+        path = GEO_CELLS_MULTI_DIR / f"fold{val_fold}_p{k}_cells.json"
+        data = json.loads(path.read_text())
+        n_cells = data["meta"]["n_cells"]
+        centroids = np.zeros((n_cells, 2), dtype=np.float64)
+        cell_to_country = np.zeros(n_cells, dtype=np.int64)
+        for cid_str, cell in data["cells"].items():
+            cid = int(cid_str)
+            centroids[cid] = [cell["centroid_lat"], cell["centroid_lng"]]
+            cell_to_country[cid] = COUNTRY_TO_IDX[cell["country"]]
+        assignments = {fname: info["cell_id"] for fname, info in data["assignments"].items()}
+        n_cells_list.append(n_cells)
+        centroids_list.append(centroids)
+        cell_to_country_list.append(cell_to_country)
+        assignments_list.append(assignments)
+    return {
+        "n_partitions": n_partitions,
+        "n_cells": n_cells_list,
+        "centroids": centroids_list,
+        "cell_to_country": cell_to_country_list,
+        "assignments": assignments_list,
+    }
+
+
+def blended_centroid_np(centroids: np.ndarray) -> tuple[float, float]:
+    """T3.4: spherical mean of K (lat, lng) centroids (shape (K, 2)) -- the "combined
+    estimate" from K independent partitions' cell picks, consistent with this project's
+    existing spherical-mean convention (B1 baseline, geo_cells.py's per-cell centroids)
+    rather than a naive degree average."""
+    vecs = latlon_to_unit_vector_np(centroids[:, 0], centroids[:, 1])
+    mean_vec = vecs.mean(axis=0)
+    mean_vec = mean_vec / np.linalg.norm(mean_vec)
+    lat_c, lng_c = unit_vector_to_latlon_np(mean_vec[None, :])
+    return float(lat_c[0]), float(lng_c[0])
+
+
 def build_transform(train: bool, input_size: int = INPUT_SIZE) -> transforms.Compose:
     if train:
         # Widened from the original (scale=(0.7,1.0), no erasing) once T2.1's first real runs
@@ -120,15 +167,26 @@ class GeoDataset(Dataset):
     exactly as T2.1 uses it, no cell fields in the returned dict. `country_idx` is always
     included (cheap, just a label lookup) since both the direct-regression and hierarchical
     pipelines can ignore it freely.
+
+    `multi_cell_info` (optional, from `load_fold_cells_multi`, T3.4): the multi-partition
+    counterpart of `cell_info` -- mutually exclusive with it (only one experiment's cell
+    scheme is ever active per dataset instance). Hands back a `cell_ids` vector (one id per
+    partition) and an `offset_km` computed relative to the BLENDED (spherical-mean) centroid
+    across all K partitions' true cells, not any single partition's centroid -- see
+    `blended_centroid_np`.
     """
 
     def __init__(
         self, df: pd.DataFrame, train: bool, input_size: int = INPUT_SIZE,
-        cell_info: dict | None = None,
+        cell_info: dict | None = None, multi_cell_info: dict | None = None,
     ):
+        assert cell_info is None or multi_cell_info is None, (
+            "cell_info and multi_cell_info are mutually exclusive"
+        )
         self.df = df.reset_index(drop=True)
         self.transform = build_transform(train, input_size=input_size)
         self.cell_info = cell_info
+        self.multi_cell_info = multi_cell_info
 
     def __len__(self) -> int:
         return len(self.df)
@@ -163,6 +221,22 @@ class GeoDataset(Dataset):
             item["cell_id"] = torch.tensor(cell_id, dtype=torch.long)
             item["offset_km"] = torch.as_tensor(offset_km, dtype=torch.float32)
 
+        if self.multi_cell_info is not None:
+            K = self.multi_cell_info["n_partitions"]
+            cell_ids = [
+                self.multi_cell_info["assignments"][k][row["filename"]] for k in range(K)
+            ]
+            centroids_k = np.array(
+                [self.multi_cell_info["centroids"][k][cell_ids[k]] for k in range(K)]
+            )  # (K, 2)
+            blend_lat, blend_lng = blended_centroid_np(centroids_k)
+            offset_km = latlon_to_local_offset_km_np(
+                np.array([row["lat"]]), np.array([row["lng"]]),
+                np.array([blend_lat]), np.array([blend_lng]),
+            )[0]
+            item["cell_ids"] = torch.as_tensor(cell_ids, dtype=torch.long)
+            item["offset_km"] = torch.as_tensor(offset_km, dtype=torch.float32)
+
         return item
 
 
@@ -193,6 +267,39 @@ def make_dataloaders(
     input_size: int = INPUT_SIZE, use_cells: bool = False,
 ) -> tuple[DataLoader, DataLoader]:
     train_ds, val_ds = make_train_val_datasets(val_fold, input_size=input_size, use_cells=use_cells)
+    train_loader = DataLoader(
+        train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers,
+        pin_memory=True, drop_last=True, persistent_workers=num_workers > 0,
+    )
+    val_loader = DataLoader(
+        val_ds, batch_size=batch_size, shuffle=False, num_workers=num_workers,
+        pin_memory=True, persistent_workers=num_workers > 0,
+    )
+    return train_loader, val_loader
+
+
+def make_train_val_datasets_multi(
+    val_fold: int, n_partitions: int, input_size: int = INPUT_SIZE
+) -> tuple[GeoDataset, GeoDataset]:
+    """T3.4 counterpart of `make_train_val_datasets` -- always loads the K-partition cell
+    scheme (`use_cells`-style toggle doesn't apply, this function only exists for T3.4)."""
+    df = load_labelled_df()
+    train_df = df[df["fold"] != val_fold]
+    val_df = df[df["fold"] == val_fold]
+    multi_cell_info = load_fold_cells_multi(val_fold, n_partitions)
+    return (
+        GeoDataset(train_df, train=True, input_size=input_size, multi_cell_info=multi_cell_info),
+        GeoDataset(val_df, train=False, input_size=input_size, multi_cell_info=multi_cell_info),
+    )
+
+
+def make_dataloaders_multi(
+    val_fold: int, n_partitions: int, batch_size: int = 128, num_workers: int = 8,
+    input_size: int = INPUT_SIZE,
+) -> tuple[DataLoader, DataLoader]:
+    train_ds, val_ds = make_train_val_datasets_multi(
+        val_fold, n_partitions, input_size=input_size
+    )
     train_loader = DataLoader(
         train_ds, batch_size=batch_size, shuffle=True, num_workers=num_workers,
         pin_memory=True, drop_last=True, persistent_workers=num_workers > 0,

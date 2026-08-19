@@ -1,0 +1,26 @@
+{
+  "backbone": "efficientnet_b0.ra_in1k",
+  "folds": [
+    0
+  ],
+  "n_partitions": 2,
+  "epochs": 1,
+  "batch_size": 16,
+  "backbone_lr": 0.0002,
+  "head_lr": 0.002,
+  "weight_decay": 0.0005,
+  "dropout": 0.3,
+  "offset_weight": 1.0,
+  "country_weight": 1.0,
+  "input_size": 224,
+  "num_workers": 4,
+  "exp_name": "T3.4_smoke_test",
+  "fold_n_cells_per_partition": {
+    "0": [
+      96,
+      96
+    ]
+  },
+  "offset_scale_km": 100.0,
+  "huber_delta": 1.0
+}
