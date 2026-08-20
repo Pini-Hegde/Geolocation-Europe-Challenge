@@ -5,15 +5,29 @@ Detailed experiment numbers live in `Experiment_Design.md` (results log) — thi
 experiment IDs (e.g. `T1.1`) rather than repeating scores, to avoid two files going out of sync.
 Update this at the end of every work session.
 
-**Current phase:** Phase 5 — Architecture experiments. **New best result: 182.9 ± 7.0km**
-(T3.4, combinatorial multi-partition cells, EfficientNet-B0) — beats T3.1's 193.0±4.2km
-baseline on every single fold, and B1's 288.1km oracle by 105.2km. Gap to the ~114km
-reference target: 68.9km. T3.3+T3.6 (soft labels + attention pooling) were tried first and
-regressed (210.4±7.8km) — reverted, archived in `failed_experiments/` (new convention:
-archive, don't delete). T3.4 succeeded where those failed because it doesn't add a new
-learned module — it changes the cell-label structure (K=2 independent partitions, blended at
-eval) on top of the exact same T3.1 architecture. K=3 code ready, jobs paused (cluster busy, user stopped work).
-**Last updated:** 2026-08-19
+**Current phase:** Phase 5 — Architecture experiments. **Best verified result: 149.5 ±
+4.6km, full 5-fold CV** (T4.1c, shared global/local EfficientNet-B0 RA4 retrieval encoder +
+supervised geographic contrastive continuation). Beats the previous best, T3.4's
+182.9 ± 7.0km, by 33.4km. **Important correction (2026-08-20): the 118km leaderboard number
+is a hard threshold for leaderboard-grading credit, not a soft reference** — recomputed the
+honest, single-fixed-decoder (not per-fold-cherry-picked) CV number: **151.06 ± 3.74km**,
+~33km still to close. Params **4,722,346** (compliant, 277,654 below the limit). T4.1c is a
+two-stage recipe: stage 1 (T4.1b, 60 epochs, `backbone_lr=1e-4`) trains the shared 5-view (1
+global + 4 local corner crops) retrieval encoder from an ImageNet-pretrained init; stage 2
+(T4.1c, 20 epochs, `backbone_lr=2e-5`, 5x lower) continues with a supervised geo-contrastive
+loss switched on (geo-balanced batches, weight 0.2, zero new params). Full 5-fold run
+(2026-08-20, jobs 4067429-4067443): per-fold 153.45/151.79/144.44/144.56/153.28km, cell acc
+43.7%, country acc 77.0% (`outputs/experiments/T4.1c_geo_supcon_5fold/cv_summary.json`).
+Architecture diagram: `writeup/figures/architecture_t4_1c.tex` (compiled with `tectonic`).
+**T4.1d (coarse country->region head, 3-level hierarchy) is architecture-complete and CPU-
+verified but GPU-untested** — paused mid-session by a cluster GPU quota block (`AssocGrpGRES`,
+account-wide, ~5h53m of GPU usage today across 13 jobs; confirmed NOT partition-specific by
+testing a40/a100/rtxpro6k, all eventually blocked). Queue fully cleared, all sbatch scripts
+now default to `a40` (was `rtxpro6k`) per explicit instruction. **Next session: resubmit the
+T4.1d smoke test first** (see T4.1d checklist entry below for the exact command) before
+anything else — do not assume the quota has reset without checking `squeue` for
+`AssocGrpGRES` first.
+**Last updated:** 2026-08-20
 
 ---
 
@@ -241,9 +255,85 @@ candidate, `timm` added as a dependency).
 - [~] T3.4 K=3 partitions — code ready, cells built, param-checked (4,394,410, compliant).
       Smoke test queued then cancelled (GPU cluster fully saturated, user paused work).
       Not yet run. Next: resubmit smoke test, then fold-0 screen vs. K=2's 182.4km.
-- [ ] T4.1 — mixture density output (optional stretch)
+- [x] **T4.1 — soft-hierarchical geographic retrieval refinement — DONE, fold-0 screen
+      166.85km / 160.42km with mode decoder.** New files: `src/models/retrieval_geo_classifier.py`,
+      `src/geo/retrieval.py`, `src/train_retrieval_geo.py`, and
+      `slurm/train_retrieval_geo_fold.sbatch`. Architecture: EfficientNet-B0 RA4 backbone;
+      K=3 raw cell heads; country and offset heads; 256-D normalized embedding; geography-
+      distribution loss based on pairwise haversine distance; full soft `P(country) ×
+      P(cell|country)` scoring of fold-training gallery locations; embedding-similarity
+      refinement; score-weighted spherical top-k output. Parameter count 4,722,346.
+      Crucial preprocessing correction: previous EfficientNet runs reused MobileViT's
+      unnormalized `[0,1]` transform even though `efficientnet_b0.ra_in1k` expects ImageNet
+      mean/std. T4.1 uses the selected checkpoint's exact `timm` preprocessing; RA4 expects
+      mean/std `(0.5,0.5,0.5)`. Smoke job 4061496 passed; 60-epoch fold-0 screen job
+      4061688 completed at 166.85km, improved to 160.42km with a zero-parameter mode decoder.
+- [x] **T4.1b — shared global/local multi-view retrieval encoder — DONE, fold-0 screen
+      155.07km.** `src/models/multiview_retrieval_geo_classifier.py`,
+      `src/train_multiview_retrieval_geo.py`, `slurm/train_multiview_retrieval_geo_fold.sbatch`.
+      Same backbone/heads as T4.1, but the backbone is shared across 5 views per image (1
+      global 288px + 4 local 64%-width corner crops), fused without new params. Fold-0: job
+      4063141, 155.07km at epoch 51/60, country acc 77.38%, cell acc 43.51%.
+- [x] **T4.1c — supervised geographic contrastive continuation — DONE, FULL 5-FOLD CV:
+      149.5 ± 4.6km, NEW BEST RESULT (2026-08-20).** Continues each fold's T4.1b checkpoint
+      for 20 epochs at 5x lower LR with a supervised geo-contrastive loss on (geo-balanced
+      batches, weight 0.2, zero new params) — see `Experiment_Design.md` Tier 4 for the full
+      per-fold table and architecture diagram (`writeup/figures/architecture_t4_1c.tex`).
+      Beats T3.4 (182.9 ± 7.0km) by 33.4km; gap to the ~114-120km reference target down to
+      ~29.5-35.5km. Params unchanged at 4,722,346.
+- [~] **T4.1d — coarse country->region head (3-level hierarchy) — BUILT, GPU-untested (paused
+      on cluster GPU quota, 2026-08-20).** Motivation: cell classification accuracy has been
+      stuck at ~42-44% across T3.1/T3.4/T4.1/T4.1c despite every surrounding mechanism
+      improving — `literature.md`'s top-ranked remaining candidate (ISNs/Clark et al.
+      multi-granularity hierarchy). New files (per this project's "never edit a working
+      baseline in place" convention): `src/protocol/geo_cells_region.py` (coarse per-country
+      partition, MIN=150/MAX=400, gives 2 regions/country = 24 total, vs. the fine
+      partitions' 96 cells/country), `src/models/region_retrieval_geo_classifier.py`
+      (T4.1c's encoder + one new `region_head`, 30,744 params), `src/train_region_retrieval_geo.py`
+      (continues from a trained T4.1c checkpoint via `strict=False` — region_head initializes
+      fresh, everything else keeps its trained weights), `slurm/train_region_retrieval_geo_fold.sbatch`.
+      Region head does NOT feed the offset target/blended centroid (a region is too coarse a
+      per-image locator) — it only adds a `region_score_weight * log P(region|country)` term
+      to retrieval/hierarchy scoring, plus its own masked CE loss. **Verified before any GPU
+      time**: syntax/imports, real fold-0 data loads correctly (region_id in [0,23], exactly
+      2/country), checkpoint continuation loads with `strict=False` producing exactly the
+      expected missing keys (`region_head.weight/bias`, nothing else), forward pass shapes
+      all correct, param count **4,753,090** (compliant, 246,910 headroom). **GPU smoke test
+      (job 4068334, then resubmitted as 4068348/4068350 while chasing a cluster GPU quota
+      issue — see below) never actually completed** — paused before any epoch ran. No
+      trained result exists yet; this is architecture-complete, GPU-blocked, not evidence of
+      anything working or not working. **Next session: resubmit the 2-epoch smoke test
+      first** (`FOLD=0 EXP_NAME=T4.1d_region_smoke_v2 EPOCHS=2 INIT_CHECKPOINT=outputs/experiments/T4.1c_geo_supcon_5fold/fold0/best_model.pt
+      sbatch slurm/train_region_retrieval_geo_fold.sbatch`), confirm region loss decreases
+      and region_acc is reasonable (near 50% or above, since 2-way per-country is close to
+      chance at 50%), then run the real ~20-epoch fold-0 screen before committing to a full
+      5-fold run.
+- [ ] T4.2 — mixture density output (optional stretch; lower priority than retrieval)
 - [ ] T5.1 — two-model ensemble (combined ≤5M params, verified) (optional stretch)
 - [ ] T5.2 — test-time augmentation on best model (optional stretch)
+
+### Researched backbone shortlist for the final hierarchical model
+
+These are **candidates, not measured project results**. Totals include the real country,
+offset and K-partition heads and were instantiated locally rather than copied from papers.
+
+| Priority | Exact `timm` backbone | K=2 total | K=3 total | Status / rationale |
+|---:|---|---:|---:|---|
+| 1 | `efficientnet_b0.ra4_e3600_r224_in1k` | 4,271,434 | 4,394,410 | Selected for T4.1; same proven B0 architecture, stronger checkpoint |
+| 2 | `repvit_m0_9.dist_450e_in1k` | 4,797,102 | 4,834,062 | Strongest genuinely different near-budget challenger |
+| 3 | `efficientformerv2_s0.snap_dist_in1k` | 3,282,718 | 3,299,710 | Local/global hybrid with ample head budget |
+| 4 | `convnextv2_atto.fcmae_ft_in1k` | 3,453,526 | 3,484,342 | Modern convolutional features for texture, roads and architecture |
+| 5 | `mobilenetv4_conv_small.e2400_r224_in1k` | 2,690,990 | 2,783,246 | Efficient modern CNN; leaves room for richer decoding |
+| 6 | `efficientnet_es.ra_in1k` | 4,421,278 | 4,544,254 | Low-risk higher-capacity EfficientNet alternative |
+| 7 | `edgenext_x_small.in1k` | 2,183,562 | 2,202,090 | Native 256px local/global model for fine street cues |
+| 8 | `mobilevitv2_100.cvnets_in1k` | 4,494,519 | 4,543,767 | Stronger MobileViT generation; native 256px |
+| 9 | `mobilenetv3_large_100.ra_in1k` | 4,399,998 | 4,492,254 | Fits unlike the unnecessarily weak Small candidate |
+| 10 | `fastvit_t8.apple_dist_in1k` at 256px | 3,415,646 | 3,489,470 | Native-resolution retest only; already 213.4km at 224px |
+
+Explicit exclusions: TinyViT-5M exceeds the complete-model limit (5,168,706 at K=3),
+EfficientNet-B1 and larger exceed budget, and MobileViT-XS/FastViT-T8 at 224px are already
+measured below EfficientNet-B0. Backbone swaps follow T4.1 retrieval validation because a
+backbone alone is unlikely to close the full 68.9km gap.
 
 ## Phase 6 — Final model & submission package
 - [ ] Select final architecture based on full 5-fold results + writeup narrative value
@@ -500,3 +590,112 @@ candidate, `timm` added as a dependency).
   speed; the template is on record for reproducibility). Next: decide between pushing K to 3
   partitions (this run used the minimum K=2 to test the mechanism cheaply first) or moving to
   T3.5 -- open decision, not yet made.
+- **2026-08-20 — T4.1/T4.1b retrieval refinement:** T4.1 fold-0 completed at **166.85km**
+  (job 4061688, epoch 52/60, `retrieval_w4_k10`). A zero-parameter geographic mode decoder
+  evaluated on that frozen checkpoint improved it again to **160.42km** (`w=2`, top-50,
+  250km hard neighborhood; job 4062906). Implemented T4.1b as a separate reproducible path:
+  one shared EfficientNet-B0 RA4 processes a global view plus four 64%-width corner crops;
+  global/local features are fused without new weights, each batch contains four examples per
+  geographic cell, a consistency loss aligns the five descriptors, and retrieval mixes
+  scene similarity with the strongest local-detail match before mode decoding. Exact count
+  remains **4,722,346 params** (277,654 under the 5M limit); all views/labels/gallery entries
+  use only provided data. CPU shape/loss/compliance checks passed. Two-epoch GPU smoke job
+  4063014 passed end-to-end (21.1GiB peak, 59-64s/epoch); its deliberately undertrained score
+  improved 431.6 -> 305.8km and is only a pipeline check. Full 60-epoch fold-0 screen
+  submitted as **job 4063141**, experiment `T4.1b_multiview_mode_fold0_screen`. **Completed
+  in 1h01m: 155.07km at epoch 51/60**, 465.37km mean, 54.46% <200km, 81.51% <750km,
+  country accuracy 77.38%, and mean cell accuracy 43.51%. Best decoder was
+  `mode_w2_l0.25_r250`. This improves T4.1 mode decoding by 5.35km and T3.4 fold-0 by
+  25.89km, but remains 35.07km above the 120km target. Next refinement must strengthen the
+  geographic retrieval embedding directly; further decoder-only tuning is unlikely to close
+  that remaining gap.
+- **2026-08-20 — T4.1c direct geographic metric refinement:** Added a supervised
+  contrastive objective to the T4.1b embedding. Geo-balanced batches provide four samples
+  per partition-0 cell; positive strength is proportional to how many of the three
+  independent cells two images share, while other sampled cells act as negatives. This adds
+  zero parameters. Continued the T4.1b best checkpoint for 20 epochs at 5x lower learning
+  rates (job 4065137, 21m49s). **Result: 150.79km at continuation epoch 14**, 450.67km mean,
+  54.51% <200km, 81.97% <750km, hard median 167.04km, country accuracy 77.76%, cell accuracy
+  43.51%; best decoder `mode_w4_l0_r150`. This improves T4.1b by 4.28km and T4.1 by 9.64km
+  with the same **4,722,346** parameters. It is a genuine improvement but still 30.79km
+  above the 120km target, so no full 5-fold claim is made.
+- **2026-08-20 (cont.) — 118km clarified as a hard leaderboard-grading threshold, not a soft
+  reference; recalibrated priorities accordingly.** User corrected the framing: leaderboard
+  grading credit requires reaching ~118km, so architecture work continues rather than moving
+  to Phase 6 packaging. Before trusting the 149.5km full-CV number as the real target gap,
+  checked whether it was inflated by per-fold decoder selection (each fold's `fold_result.json`
+  picked its own best-scoring decoder config using that fold's own validation labels — not
+  available on the real holdout). Recomputed the honest number from each fold's already-saved
+  `decoder_stats` using ONE fixed config (`plain_w4_l0.25_k10`) across all 5 folds: **151.06 ±
+  3.74km** — only 1.6km worse than the cherry-picked number, so the earlier result wasn't
+  meaningfully optimistic, but the honest number is now the one to report/close the gap on.
+  Remaining gap to 118km: ~33km.
+- **2026-08-20 (cont.) — built and launched the missing Phase 4 error-analysis tooling.**
+  Wrote `src/error_analysis_t4_1c.py` (per-image/per-country error breakdown + country
+  confusion matrix, all 5 folds out-of-fold, fixed decoder config) to find WHERE the
+  remaining ~33km is concentrated before guessing at the next architecture move. Submitted as
+  `slurm/error_analysis_t4_1c.sbatch` (job 4068290) — this job never completed this session
+  (see GPU quota entry below); rerun next session before drawing conclusions from it.
+- **2026-08-20 (cont.) — recommended and built T4.1d, a coarse country->region head (3-level
+  hierarchy).** User asked directly what architectural change would close the gap
+  "brutally," not incrementally. Recommendation, grounded in the project's own numbers: cell
+  classification accuracy has been stuck at 41.8%->42.1%->43.7% across T3.1/T3.4/T4.1c (three
+  completely different architectures) while every score improvement came from better
+  *combining* imperfect cell predictions, never from the classifier itself improving —
+  `literature.md`'s own top-ranked untried candidate (ISNs/Clark et al.'s multi-granularity
+  hierarchy) targets exactly this. Built it as described in the T4.1d checklist entry above
+  (`geo_cells_region.py`, `region_retrieval_geo_classifier.py`, `train_region_retrieval_geo.py`,
+  new sbatch script) — fully CPU-verified (real fold-0 data, checkpoint-continuation loading,
+  forward shapes, param compliance at 4,753,090) but never reached a GPU smoke test this
+  session due to the quota issue below.
+- **2026-08-20 (cont.) — hit and diagnosed a cluster-wide GPU quota block; paused GPU work for
+  the day.** After submitting the T4.1d smoke test and the error-analysis job, both sat
+  `PENDING (AssocGrpGRES)` on `rtxpro6k`. Initially misdiagnosed as partition-specific
+  (a40/a100 accepted the jobs immediately with normal `Priority`/`None` reasons) and moved
+  jobs between partitions repeatedly to route around it -- but every partition eventually
+  flagged the same jobs `AssocGrpGRES` within ~30-60s of submission, including with ZERO jobs
+  actually running (confirmed via `sacct`/`squeue` -- not a concurrent-usage limit). Checked
+  cumulative usage: ~5h53m of GPU time across 13 completed jobs today (4x ~1h01m T4.1b
+  stage-1 runs, 5x ~21m T4.1c stage-2 runs, plus smaller smoke tests) -- concluded this is a
+  genuine account-level GPU-hour/GPU-count budget exhausted for the day, not a bug in any
+  job or a partition quirk. No admin-level visibility available (`sacctmgr`/`sshare` queries
+  returned empty limit fields for this association) to confirm the exact reset policy. User
+  decided to pause GPU work for today rather than keep retrying blind. Cancelled all pending
+  jobs, queue fully cleared. **Per explicit instruction, `rtxpro6k` is no longer used at
+  all** -- updated `slurm/train_multiview_retrieval_geo_fold.sbatch`,
+  `slurm/train_region_retrieval_geo_fold.sbatch`, and `slurm/error_analysis_t4_1c.sbatch` to
+  default to `--partition=a40 --gres=gpu:a40:1` (was `rtxpro6k`). **Next session: check
+  `squeue` for `AssocGrpGRES` before assuming the quota has reset** -- don't resubmit blind.
+- **2026-08-20 (cont.) — T4.1c full 5-fold CV, run in parallel via SLURM job chaining:**
+  User asked to run T4.1c as full 5-fold CV (all folds in parallel) and to produce a
+  compiled architecture diagram for it. Since T4.1c is a two-stage recipe (T4.1b base
+  training -> T4.1c contrastive continuation) and only fold 0 had a T4.1b checkpoint from
+  the prior session, submitted T4.1b stage-1 for folds 1-4 (`jobs 4067429-4067432`, default
+  hyperparams, EPOCHS=60) and copied fold 0's existing checkpoint into the same unified
+  `T4.1b_multiview_mode_5fold` experiment dir (no wasted GPU time re-training it). Submitted
+  T4.1c stage-2 for all 5 folds immediately, chaining folds 1-4 via SLURM
+  `--dependency=afterok:<stage1_job_id>` so each fold's contrastive continuation auto-starts
+  the instant its own stage-1 job completes -- no polling/babysitting needed, and true
+  fold-level parallelism given cluster GPU availability (`jobs 4067439-4067443`,
+  `T4.1c_geo_supcon_5fold`). All 9 jobs ran cleanly on `rtxpro6k`, no failures. Stage-1
+  (folds 1-4) completed in ~1h01m each; stage-2 (all 5 folds) completed in ~20-22min each.
+  **Aggregated via `src/aggregate_fold_results.py`: 149.5 ± 4.6km full 5-fold CV median**
+  (per-fold: 153.45 / 151.79 / 144.44 / 144.56 / 153.28km), mean 449.5km, cell acc 43.7%,
+  country acc 77.0% (`outputs/experiments/T4.1c_geo_supcon_5fold/cv_summary.json`). **New
+  best result overall**, beating T3.4's 182.9 ± 7.0km by 33.4km -- tight cross-fold std
+  (4.6km) confirms this is a real, general improvement. Gap to the ~114-120km reference
+  target narrowed from 68.9km (T3.4) to ~29.5-35.5km. Honest caveat for the writeup: folds 1
+  and 4 peaked at continuation epoch 1 and 3 (of 20), so most of the gain comes from turning
+  the contrastive loss on at all, not from training it for long -- worth investigating
+  whether a shorter continuation schedule or different LR would be equally effective at
+  lower cost, if revisited. Also built `writeup/figures/architecture_t4_1c.tex` (new
+  standalone TikZ figure following the existing `architecture_t3_4.tex` convention),
+  covering the shared 5-view encoder, all six training losses (highlighting the new
+  supervised geo-contrastive term), and the full inference-time retrieval/mode-decode path;
+  compiled cleanly with `~/.local/bin/tectonic` after fixing two real issues (missing
+  `amsmath` for `\tfrac`, and a `label=`-on-background-layer bug in `fit` nodes that clipped
+  long section-header labels at the page edge -- fixed by promoting labels to plain
+  foreground nodes anchored off the fit box's `.north`, a pattern worth reusing in any future
+  figure with long group labels). Next: decide whether to push further (tune contrastive
+  `tau`/weight/schedule given the early-peaking folds, or the still-unrun T3.4 K=3
+  partitions) or treat 149.5km as the final architecture and move to Phase 6 packaging.

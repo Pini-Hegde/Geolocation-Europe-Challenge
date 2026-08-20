@@ -245,16 +245,127 @@ backbone swap as the next step.
   head/masking stage) than T3.4 — only pursue if T3.4 doesn't close enough of the gap on its
   own.
 
-### Tier 4 — Best backbone + best formulation, advanced variants (OPTIONAL / stretch — only pursue if Tier 1-3 error analysis specifically motivates one of these)
-- **T4.1 Mixture density output**: small mixture of von Mises-Fisher (spherical analogue of a
-  Gaussian) or 2D Gaussian components, for images that are genuinely visually ambiguous
-  between multiple plausible locations. Take the mixture mode at inference.
-- ~~**T4.2 Tiny CNN+attention hybrid (MobileViT-XXS scale)**~~ — **superseded, 2026-08-18**:
-  pulled forward into T2.1 (MobileViT-XS) as the new default primary candidate rather than
-  an optional stretch goal, once we confirmed a pretrained hybrid backbone was available at
-  budget via `timm`. A larger, purpose-built attention hybrid (e.g. FastViT-T8, ~4M params)
-  remains a possible Tier 4 stretch pick if T2.1's error analysis specifically motivates
-  going bigger.
+### Tier 4 — Continuous refinement beyond hard cell centroids
+
+- **T4.1 Soft-hierarchical geographic retrieval — IMPLEMENTED 2026-08-19; screen complete;
+  fold-0 screen running.** This is the research-selected response to T3.4's measured failure mode, not a
+  generic extra head. T3.4 reaches 182.9km but retains only a hard country argmax and one
+  hard cell argmax per partition; country accuracy is 72.7%, cell accuracy is 42.1%, and
+  runner-up probability and within-cell visual information are discarded. Training losses
+  near zero while validation accuracy plateaus also show that simply adding classifier
+  capacity is unlikely to close the 68.9km gap to the ~114km reference.
+
+  **Architecture:** `efficientnet_b0.ra4_e3600_r224_in1k` -> shared feature -> country head,
+  K=3 raw cell heads, local-offset head, and a normalized 256-D retrieval embedding. Training
+  keeps true-country masking only inside the cell loss. Inference does not hard-mask on one
+  country: every labelled fold-training gallery coordinate is scored by
+  `log P(country) + mean_k log P(cell_k | country) + beta * cosine(query, gallery)`. Top-k
+  gallery coordinates are combined with a score-weighted spherical mean. This implements
+  the CPlaNet/PIGEON/IM2GPS pattern—coarse classification constrains continuous retrieval
+  refinement—without external images or generated data. An additional geography-distribution
+  loss trains pairwise visual similarities against a smooth haversine-distance distribution.
+
+  **Constraint proof:** EfficientNet feature extractor 4,007,548 params plus country/K=3
+  cell/offset heads and the 1,280->256 embedding projection total **4,722,346 trainable
+  parameters**, below 5,000,000 by 277,654. Gallery embeddings and coordinates come only
+  from provided fold-training images and are non-trainable inference data. The fixed grouped
+  CV protocol remains unchanged.
+
+  **Preprocessing correctness fix:** prior EfficientNet experiments reused the MobileViT
+  unnormalized `[0,1]` transform. `timm` confirms `efficientnet_b0.ra_in1k` expects ImageNet
+  mean/std, while the selected RA4 checkpoint expects mean=std=(0.5,0.5,0.5) and crop_pct=0.9.
+  T4.1 resolves and applies the selected backbone's exact preprocessing. Baseline files are
+  untouched for reproducibility.
+
+  **Implementation/status:** `src/models/retrieval_geo_classifier.py`,
+  `src/geo/retrieval.py`, `src/train_retrieval_geo.py`, and
+  `slurm/train_retrieval_geo_fold.sbatch`. Syntax, real-label masking, forward shapes,
+  embedding normalization, decoder numerics and exact parameter count pass on CPU. RA4
+  weights are cached for offline compute nodes. One-epoch fold-0 smoke job 4061496 passed
+  end-to-end in 1m52s with 6.8GB peak GPU memory. At epoch 1, the retrieval decoder already
+  improved the hard decoder from 498.3km to 482.9km (`retrieval_w8_k10`), confirming that the
+  intended path is active; this is a smoke result, not a competitive score. The 60-epoch
+  fold-0 screen job 4061688 completed at **166.85km** (best epoch 52/60,
+  `retrieval_w4_k10`; hard decoder 182.47km). A post-hoc, zero-parameter spatial-mode
+  decoder on the frozen checkpoint improved this to **160.42km** by selecting the strongest
+  coherent top-50 gallery cluster within a 250km hard neighborhood before averaging (job
+  4062906). This decoder uses only fold-training coordinates and changes no model weights.
+
+- **T4.1b Shared global/local retrieval + geographic mode decoding — DONE, fold-0
+  155.07km (job 4063141).** One EfficientNet-B0 RA4 instance processes five
+  views of each supplied 512px image: one global scene and four 64%-width corner detail
+  crops. The backbone and 1,280->256 embedding projection are shared across every view;
+  global context and mean local features receive equal weight, so the design adds **zero
+  trainable parameters** over T4.1. Training uses geographically balanced batches (four
+  samples per partition-0 cell), the existing cell/country/offset/geographic losses, and a
+  small cosine consistency loss aligning view embeddings. Inference combines hierarchy
+  score, fused descriptor similarity, and strongest local-detail similarity, followed by
+  the validated mode decoder. This directly targets detail lost in 288px global resizing
+  and top-k means falling between competing locations. Exact compliance: **4,722,346 /
+  5,000,000 parameters**. The two-epoch GPU smoke (job 4063014) completed backward, gallery,
+  mode-decode, and artifact paths at 21.1GiB peak; its 305.8km score is not competitive.
+  Full fold-0 training completed at epoch 51/60: **155.07km median**, 465.37km mean,
+  54.46% <200km, 81.51% <750km, country accuracy 77.38%, and mean cell accuracy 43.51%.
+  Best decoder: `mode_w2_l0.25_r250`. This beats T4.1 by 5.35km but remains above the 120km
+  target, so full CV is not yet justified; the next gate is stronger direct metric learning.
+
+- **T4.2 Mixture density output**: retained as an optional later experiment, but lower
+  priority because it does not exploit the supplied labelled gallery and does not directly
+  fix hard country/cell information loss.
+- **T4.1c Supervised geographic contrastive continuation — DONE, FULL 5-FOLD CV: 149.5 ±
+  4.6km, CURRENT BEST RESULT (2026-08-20).** Starting from each fold's T4.1b best checkpoint,
+  a zero-parameter metric loss pulls together images sharing one or more of the three
+  independent geographic cells, weighted by the fraction shared, and uses other geo-balanced
+  batch cells as negatives. Twenty epochs at backbone/head LRs 2e-5/2e-4 (5x lower than
+  T4.1b's stage-1 LRs). Fold-0 screen (job 4065137) reached 150.79km; the full 5-fold run
+  (2026-08-20) trained fresh T4.1b stage-1 checkpoints for folds 1-4 (jobs
+  4067429-4067432, reusing fold 0's existing checkpoint) then chained T4.1c stage-2 for all
+  5 folds via SLURM `--dependency=afterok` (jobs 4067439-4067443) so each fold's contrastive
+  continuation launched automatically the instant its own stage-1 finished. **Result:
+  149.5 ± 4.6km median** (per-fold: 153.45 / 151.79 / 144.44 / 144.56 / 153.28km), 449.5km
+  mean, cell acc 43.7%, country acc 77.0%
+  (`outputs/experiments/T4.1c_geo_supcon_5fold/cv_summary.json`). Exact parameter count
+  remains **4,722,346**. **Beats T3.4 (182.9 ± 7.0km) by 33.4km on a full CV basis** — tight
+  cross-fold std (4.6km) confirms a real, general improvement, not one lucky fold. Gap to the
+  ~114-120km reference target narrowed from 68.9km (T3.4) to **~29.5-35.5km**. Honest caveat:
+  folds 1 and 4 peaked at continuation epoch 1 and 3 of 20 — most of the gain comes from
+  turning the contrastive loss on at all, not from training it for long; a shorter/cheaper
+  continuation schedule may be equally effective if revisited. Architecture fully documented
+  in `writeup/figures/architecture_t4_1c.tex` (compiled with `tectonic`): the shared 5-view
+  encoder, all six training losses, and the inference-time retrieval/mode-decode path.
+  **Correction (2026-08-20): 118km is a hard leaderboard-grading threshold, not a soft
+  reference — recomputed the honest number using ONE fixed decoder config across all 5
+  folds** (each fold's own "best decoder" in the table above was picked using that fold's own
+  validation labels, unavailable on the real holdout): **151.06 ± 3.74km** with
+  `plain_w4_l0.25_k10` (retrieval_weight=4, local_weight=0.25, plain top-10 spherical mean) —
+  only 1.6km worse than the cherry-picked number, so not meaningfully inflated, but this is
+  now the number to close the remaining ~33km gap on.
+- **T4.1d Coarse country->region head (3-level hierarchy) — BUILT, GPU-untested (paused on a
+  cluster GPU quota, 2026-08-20).** Direct response to a persistent, unmoved number: cell
+  classification accuracy has been 41.8% (T3.1) -> 42.1% (T3.4) -> 43.7% (T4.1c) across three
+  totally different architectures, while every actual score improvement came from better
+  *combining* imperfect cell predictions (blending, soft retrieval, contrastive refinement),
+  never from the classifier itself. `literature.md` §1/§5's top-ranked untried candidate
+  (ISNs/Clark et al.'s multi-granularity hierarchy) targets this directly: add one more,
+  much coarser classification level (country -> ~2-3 regions -> fine cell) so the model gets
+  an easier, better-conditioned coarse signal before the hard fine-cell pick. Built a single
+  additional per-country partition (`src/protocol/geo_cells_region.py`, MIN=150/MAX=400 vs.
+  the fine partitions' 40/120) — 2 regions/country, 24 total. New model
+  `RegionMultiViewRetrievalGeoClassifier` (`src/models/region_retrieval_geo_classifier.py`)
+  adds one `region_head` (30,744 params) on T4.1c's exact encoder — deliberately NOT folded
+  into the K fine cell partitions or their offset-target blend (a region spans too much of a
+  country to be a good per-image locator); it only adds a `region_score_weight * log
+  P(region|country)` term to retrieval scoring plus its own masked CE loss. Total params
+  **4,753,090** (compliant, 246,910 headroom). `src/train_region_retrieval_geo.py` continues
+  from a trained T4.1c checkpoint (`strict=False` — region_head initializes fresh, everything
+  else keeps its trained weights), matching T4.1c's own continuation recipe. CPU-verified
+  before any GPU time: real fold-0 data loads correctly, checkpoint continuation produces
+  exactly the expected missing keys, forward shapes correct. **GPU smoke test never
+  completed this session** — see `Progress.md`'s GPU-quota session-log entry. No trained
+  result exists yet.
+- ~~**Tiny CNN+attention hybrid (MobileViT-XXS scale)**~~ — superseded by the completed
+  MobileViT/FastViT experiments; the attention-pooling ablation regressed, so it is not
+  being revived inside T4.1.
 
 ### Tier 5 — Budget-aware ensembling & free wins (OPTIONAL / stretch — T5.2 TTA is cheap and low-risk; T5.1 ensembling adds real complexity, only if it clearly beats a single model and can be explained simply)
 - **T5.1 Two-model ensemble**: two independently trained models (~2-2.5M params each,
@@ -270,6 +381,11 @@ backbone swap as the next step.
 
 | Exp ID | Architecture | Formulation | Params (verified) | CV median km (mean±std) | CV mean km | <200km % | <750km % | Notes |
 |--------|--------------|-------------|--------------------|--------------------------|------------|----------|----------|-------|
+| **T4.1c (full 5-fold CV, HONEST fixed decoder)** | T4.1b shared global/local EfficientNet-B0 RA4 | same as below, but ONE decoder config (`plain_w4_l0.25_k10`) applied uniformly across all 5 folds, not each fold's own best | **4,722,346** | **151.06 ± 3.74** | — | — | — | **The number to actually close the 118km gap on (2026-08-20)** — per-fold "best decoder" selection (row below) used each fold's own validation labels, unavailable on the real holdout. Recomputed from each fold's saved `decoder_stats`; only 1.6km worse than the cherry-picked number. |
+| T4.1c (full 5-fold CV, per-fold best decoder) | T4.1b shared global/local EfficientNet-B0 RA4 | T4.1b + supervised multi-partition geographic contrastive continuation | 4,722,346 | 149.5 ± 4.6 | 449.5 | ~55.4% (avg) | ~81.5% (avg) | Jobs 4067429-4067432 (stage-1, folds 1-4) -> 4067439-4067443 (stage-2, all 5 folds), chained via SLURM `--dependency=afterok`. Per-fold: 153.45/151.79/144.44/144.56/153.28km. Cell acc 43.7%, country acc 77.0%. Beats T3.4 by 33.4km. `outputs/experiments/T4.1c_geo_supcon_5fold/cv_summary.json`. Not the number to report — see honest row above. |
+| T4.1c (fold-0 screen) | T4.1b shared global/local EfficientNet-B0 RA4 | T4.1b + supervised multi-partition geographic contrastive continuation | 4,722,346 | 150.79 (1 fold only) | 450.67 | 54.51% | 81.97% | Job 4065137; improves T4.1b by 4.28km; best `mode_w4_l0_r150`; superseded by the full 5-fold row above. |
+| T4.1b (fold-0 screen) | Shared EfficientNet-B0 RA4, global + four local views, K=3, 256-D embedding | geo-balanced training + global/local retrieval + coherent geographic-mode decoder | **4,722,346** | **155.07 (1 fold only)** | 465.37 | 54.46% | 81.51% | Job 4063141; epoch 51/60; country 77.38%, cell 43.51%. Beats T4.1 by 5.35km, but not yet full CV. |
+| T4.1 (fold-0 screen) | EfficientNet-B0 RA4 + K=3 + 256-D retrieval embedding | soft hierarchy + geographic retrieval; frozen-checkpoint spatial-mode decoding | **4,722,346** | **160.42 (1 fold only)** | 476.42 | 54.12% | 79.59% | Trained top-k result 166.85km (job 4061688); zero-parameter mode decoder improved it to 160.42km (job 4062906). Not full CV. |
 | B0     | none (closed-form) | global spherical-mean centroid, predicted for every image | 0 | 1217.8 ± 9.1 | 1217.8 | 2.3% | 20.1% | Floor. Predicts the training-fold centroid regardless of image content. |
 | B1     | none (closed-form) | oracle true-country spherical-mean centroid | 0 | 288.1 ± 4.2 | 291.1 | 28.0% | 96.9% | Cheats: uses the ground-truth country label. Ceiling on "perfect country classification alone." Gap vs. B0 (1218→288km) shows country-level signal is worth most of the error budget; B1's own 288km / 28% <200km shows real within-country precision work remains even with country solved. Worst within-country error: Norway (521km median), Spain (468km), Turkey (408km) — large/sparse countries. Best: Iceland (172km), Belarus (192km), Poland (229km) — compact countries. Motivates Tier 3 grid-cell / country-aux-head design. Full per-country table: `outputs/protocol/eda_baselines/b1_per_country.csv`. |
 | ~~T1.1~~ | — | — | — | — | — | — | — | **Dropped, 2026-08-18** — see Tier 1 note above. |

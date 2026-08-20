@@ -42,6 +42,7 @@ LABELS_CSV = REPO_ROOT / "geo_dataset" / "train_labels.csv"
 FOLDS_JSON = REPO_ROOT / "outputs" / "protocol" / "folds" / "folds.json"
 GEO_CELLS_DIR = REPO_ROOT / "outputs" / "protocol" / "geo_cells"
 GEO_CELLS_MULTI_DIR = REPO_ROOT / "outputs" / "protocol" / "geo_cells_multi"
+GEO_CELLS_REGION_DIR = REPO_ROOT / "outputs" / "protocol" / "geo_cells_region"
 
 # MobileViT (cvnets recipe, via timm) expects [0, 1]-scaled RGB, no ImageNet mean/std
 # normalization (verified via timm.data.resolve_data_config: mean=(0,0,0), std=(1,1,1)) --
@@ -117,6 +118,32 @@ def load_fold_cells_multi(val_fold: int, n_partitions: int) -> dict:
     }
 
 
+def load_fold_region(val_fold: int) -> dict:
+    """T4.1d: same shape as `load_fold_cells`, but for the single coarse per-country
+    "region" partition built by `src/protocol/geo_cells_region.py`
+    (`outputs/protocol/geo_cells_region/fold{f}_cells.json`). Kept SEPARATE from
+    `load_fold_cells_multi`'s K fine partitions -- deliberately not folded into that list,
+    because a region's centroid is a poor per-image locator (it spans a large chunk of a
+    country) and must NOT feed the offset-regression target the way the fine partitions'
+    blended centroid does (see `GeoDataset`'s docstring and
+    `Experiment_Design.md` Tier 4 T4.1d). The region head only contributes an additional
+    conditioning term to retrieval/hierarchy SCORING, not to offset supervision."""
+    path = GEO_CELLS_REGION_DIR / f"fold{val_fold}_cells.json"
+    data = json.loads(path.read_text())
+    n_regions = data["meta"]["n_cells"]
+    centroids = np.zeros((n_regions, 2), dtype=np.float64)
+    region_to_country = np.zeros(n_regions, dtype=np.int64)
+    for cid_str, cell in data["cells"].items():
+        cid = int(cid_str)
+        centroids[cid] = [cell["centroid_lat"], cell["centroid_lng"]]
+        region_to_country[cid] = COUNTRY_TO_IDX[cell["country"]]
+    assignments = {fname: info["cell_id"] for fname, info in data["assignments"].items()}
+    return {
+        "n_regions": n_regions, "centroids": centroids,
+        "region_to_country": region_to_country, "assignments": assignments,
+    }
+
+
 def blended_centroid_np(centroids: np.ndarray) -> tuple[float, float]:
     """T3.4: spherical mean of K (lat, lng) centroids (shape (K, 2)) -- the "combined
     estimate" from K independent partitions' cell picks, consistent with this project's
@@ -174,11 +201,17 @@ class GeoDataset(Dataset):
     partition) and an `offset_km` computed relative to the BLENDED (spherical-mean) centroid
     across all K partitions' true cells, not any single partition's centroid -- see
     `blended_centroid_np`.
+
+    `region_info` (optional, from `load_fold_region`, T4.1d): ADDITIVE, not mutually
+    exclusive with the others -- can be combined with `multi_cell_info` to also hand back a
+    `region_id` scalar. Deliberately NOT folded into `multi_cell_info`'s partition list or
+    its offset-target blend (see `load_fold_region`'s docstring for why).
     """
 
     def __init__(
         self, df: pd.DataFrame, train: bool, input_size: int = INPUT_SIZE,
         cell_info: dict | None = None, multi_cell_info: dict | None = None,
+        region_info: dict | None = None,
     ):
         assert cell_info is None or multi_cell_info is None, (
             "cell_info and multi_cell_info are mutually exclusive"
@@ -187,6 +220,7 @@ class GeoDataset(Dataset):
         self.transform = build_transform(train, input_size=input_size)
         self.cell_info = cell_info
         self.multi_cell_info = multi_cell_info
+        self.region_info = region_info
 
     def __len__(self) -> int:
         return len(self.df)
@@ -236,6 +270,10 @@ class GeoDataset(Dataset):
             )[0]
             item["cell_ids"] = torch.as_tensor(cell_ids, dtype=torch.long)
             item["offset_km"] = torch.as_tensor(offset_km, dtype=torch.float32)
+
+        if self.region_info is not None:
+            region_id = self.region_info["assignments"][row["filename"]]
+            item["region_id"] = torch.tensor(region_id, dtype=torch.long)
 
         return item
 
