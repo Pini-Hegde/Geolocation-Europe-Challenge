@@ -88,14 +88,20 @@ def load_fold_cells(val_fold: int) -> dict:
     }
 
 
-def load_fold_cells_multi(val_fold: int, n_partitions: int) -> dict:
+def load_fold_cells_multi(
+    val_fold: int, n_partitions: int, cells_dir: Path | None = None
+) -> dict:
     """T3.4: same as `load_fold_cells`, but for the K independent partitions built by
     `src/protocol/geo_cells_multi.py` (`outputs/protocol/geo_cells_multi/fold{f}_p{k}_cells.json`).
     Returns per-partition lists (index k = partition k) of n_cells/centroids/cell_to_country/
-    assignments -- same shape as `load_fold_cells`'s single-partition dict, just K of them."""
+    assignments -- same shape as `load_fold_cells`'s single-partition dict, just K of them.
+    `cells_dir` (screening variant, 2026-08-20): override to load an alternate partition set
+    (e.g. a different cell-size cache) without touching the canonical directory; defaults to
+    `GEO_CELLS_MULTI_DIR`."""
+    cells_dir = cells_dir or GEO_CELLS_MULTI_DIR
     n_cells_list, centroids_list, cell_to_country_list, assignments_list = [], [], [], []
     for k in range(n_partitions):
-        path = GEO_CELLS_MULTI_DIR / f"fold{val_fold}_p{k}_cells.json"
+        path = cells_dir / f"fold{val_fold}_p{k}_cells.json"
         data = json.loads(path.read_text())
         n_cells = data["meta"]["n_cells"]
         centroids = np.zeros((n_cells, 2), dtype=np.float64)

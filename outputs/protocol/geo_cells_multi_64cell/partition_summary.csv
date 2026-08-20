@@ -1,0 +1,4 @@
+fold,partition,seed,n_cells,cell_size_min,cell_size_median,cell_size_max
+0,0,1000,84,100,100.0,192
+0,1,1001,84,100,100.0,192
+0,2,1002,84,100,100.0,192

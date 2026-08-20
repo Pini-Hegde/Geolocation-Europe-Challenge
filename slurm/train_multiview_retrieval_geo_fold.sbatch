@@ -21,6 +21,9 @@ HEAD_LR="${HEAD_LR:-1e-3}"
 GEO_WEIGHT="${GEO_WEIGHT:-0.2}"
 CONSISTENCY_WEIGHT="${CONSISTENCY_WEIGHT:-0.1}"
 CONTRASTIVE_WEIGHT="${CONTRASTIVE_WEIGHT:-0.0}"
+SAMPLES_PER_CELL="${SAMPLES_PER_CELL:-4}"
+CELLS_DIR="${CELLS_DIR:-}"
+N_PARTITIONS="${N_PARTITIONS:-3}"
 INIT_CHECKPOINT="${INIT_CHECKPOINT:-}"
 module load python/3.12-base
 source .venv/bin/activate
@@ -31,7 +34,8 @@ python -u -m src.train_multiview_retrieval_geo \
   --folds "$FOLD" --epochs "$EPOCHS" --batch-size "$BATCH_SIZE" \
   --backbone-lr "$BACKBONE_LR" --head-lr "$HEAD_LR" \
   --geo-weight "$GEO_WEIGHT" --consistency-weight "$CONSISTENCY_WEIGHT" \
-  --contrastive-weight "$CONTRASTIVE_WEIGHT" --init-checkpoint "$INIT_CHECKPOINT" \
+  --contrastive-weight "$CONTRASTIVE_WEIGHT" --samples-per-cell "$SAMPLES_PER_CELL" \
+  --cells-dir "$CELLS_DIR" --n-partitions "$N_PARTITIONS" --init-checkpoint "$INIT_CHECKPOINT" \
   --eval-batch-size 64 --input-size 288 --num-workers 8 \
   --exp-name "$EXP_NAME"
 echo "Job $SLURM_JOB_ID finished at $(date)"

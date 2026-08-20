@@ -1,0 +1,63 @@
+{
+  "backbone": "efficientnet_b0.ra4_e3600_r224_in1k",
+  "folds": [
+    0
+  ],
+  "n_partitions": 3,
+  "cells_dir": "outputs/protocol/geo_cells_multi_64cell",
+  "embedding_dim": 256,
+  "epochs": 60,
+  "batch_size": 64,
+  "eval_batch_size": 64,
+  "samples_per_cell": 8,
+  "backbone_lr": 0.0001,
+  "head_lr": 0.001,
+  "weight_decay": 0.001,
+  "dropout": 0.3,
+  "country_weight": 1.0,
+  "offset_weight": 0.5,
+  "geo_weight": 16.0,
+  "consistency_weight": 0.1,
+  "contrastive_weight": 0.0,
+  "contrastive_temperature": 0.1,
+  "geo_scale_km": 250.0,
+  "embedding_temperature": 0.1,
+  "retrieval_weights": [
+    2.0,
+    4.0
+  ],
+  "local_weights": [
+    0.0,
+    0.25,
+    0.5
+  ],
+  "mode_radii_km": [
+    150.0,
+    250.0
+  ],
+  "mode_top_m": 50,
+  "mode_kernel": "hard",
+  "local_fraction": 0.64,
+  "input_size": 288,
+  "num_workers": 8,
+  "init_checkpoint": "",
+  "exp_name": "T4.1b_84cell_geoweight16_fold0_screen",
+  "n_params_total": 4676230,
+  "param_limit": 5000000,
+  "compliant": true,
+  "preprocess": {
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "crop_pct": 0.9,
+    "views": "global_plus_four_corner_crops",
+    "local_fraction": 0.64
+  }
+}

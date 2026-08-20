@@ -36,7 +36,8 @@ def make_multiview_loaders(args, val_fold: int):
     df = load_labelled_df()
     train_df = df[df["fold"] != val_fold]
     val_df = df[df["fold"] == val_fold]
-    cell_info = load_fold_cells_multi(val_fold, args.n_partitions)
+    cells_dir = Path(args.cells_dir) if args.cells_dir else None
+    cell_info = load_fold_cells_multi(val_fold, args.n_partitions, cells_dir=cells_dir)
     probe = timm.create_model(args.backbone, pretrained=False)
     cfg = resolve_data_config({}, model=probe)
     del probe
@@ -269,6 +270,11 @@ def main():
     parser.add_argument("--backbone", default="efficientnet_b0.ra4_e3600_r224_in1k")
     parser.add_argument("--folds", type=int, nargs="+", default=[0])
     parser.add_argument("--n-partitions", type=int, default=3)
+    parser.add_argument(
+        "--cells-dir", default="",
+        help="Override for outputs/protocol/geo_cells_multi (screening alt cell-size caches); "
+             "empty = canonical directory.",
+    )
     parser.add_argument("--embedding-dim", type=int, default=256)
     parser.add_argument("--epochs", type=int, default=60)
     parser.add_argument("--batch-size", type=int, default=32)
