@@ -11,10 +11,12 @@
 
 set -euo pipefail
 cd "$SLURM_SUBMIT_DIR"
+EXP_NAME="${EXP_NAME:-T4.1c_geo_supcon_5fold}"
+FOLDS="${FOLDS:-0 1 2 3 4}"
 module load python/3.12-base
 source .venv/bin/activate
 export HF_HUB_OFFLINE=1
-echo "Job $SLURM_JOB_ID on $(hostname)"
+echo "Job $SLURM_JOB_ID on $(hostname): exp=$EXP_NAME folds=$FOLDS"
 nvidia-smi -L
-python -u -m src.error_analysis_t4_1c --exp-name T4.1c_geo_supcon_5fold
+python -u -m src.error_analysis_t4_1c --exp-name "$EXP_NAME" --folds $FOLDS
 echo "Job $SLURM_JOB_ID finished at $(date)"

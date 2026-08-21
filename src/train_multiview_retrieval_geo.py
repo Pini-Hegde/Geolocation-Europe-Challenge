@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 
 from src.data.dataset import GeoDataset, load_fold_cells_multi, load_labelled_df
 from src.data.multiview import GeoBalancedBatchSampler, GlobalLocalTransform
+from src.geo.countries import COUNTRY_TO_IDX
 from src.geo.mode_retrieval import spherical_mode_decode
 from src.geo.retrieval import conditional_cell_log_probs, spherical_topk_decode
 from src.geo.spherical import haversine_km_np
@@ -203,6 +204,9 @@ def train_one_fold(args, fold, device, out_dir):
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.epochs)
     scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda")
     out_dir.mkdir(parents=True, exist_ok=True)
+    cluster_country_idx = torch.tensor(
+        [COUNTRY_TO_IDX[c] for c in args.cluster_countries], device=device
+    )
     history, best_median, best_epoch = [], float("inf"), -1
     for epoch in range(args.epochs):
         model.train()
@@ -215,10 +219,21 @@ def train_one_fold(args, fold, device, out_dir):
             offsets = batch["offset_km"].to(device, non_blocking=True)
             lat, lng = batch["lat"].to(device), batch["lng"].to(device)
             optimizer.zero_grad(set_to_none=True)
+            sample_weight = None
+            if args.cluster_weight != 1.0:
+                sample_weight = torch.where(
+                    (countries[:, None] == cluster_country_idx[None, :]).any(dim=-1),
+                    args.cluster_weight, 1.0,
+                )
             with torch.autocast(device_type=device.type, enabled=device.type == "cuda"):
                 logits, offset, country_logits, embedding, views = model(images)
-                cell_loss = masked_cell_loss(model, logits, cells_true, countries)
-                country_loss = F.cross_entropy(country_logits, countries)
+                cell_loss = masked_cell_loss(model, logits, cells_true, countries, sample_weight)
+                if sample_weight is None:
+                    country_loss = F.cross_entropy(country_logits, countries)
+                else:
+                    country_loss = (
+                        F.cross_entropy(country_logits, countries, reduction="none") * sample_weight
+                    ).sum() / sample_weight.sum()
                 offset_loss = F.huber_loss(offset, offsets / 100.0, delta=1.0)
                 geo_loss = geo_distribution_loss(
                     embedding, lat, lng, args.geo_scale_km, args.embedding_temperature
@@ -232,6 +247,9 @@ def train_one_fold(args, fold, device, out_dir):
                         + args.consistency_weight * consistency_loss
                         + args.contrastive_weight * contrastive_loss)
             scaler.scale(loss).backward()
+            if args.grad_clip_norm > 0:
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip_norm)
             scaler.step(optimizer)
             scaler.update()
             totals += [cell_loss.item(), country_loss.item(), offset_loss.item(),
@@ -288,6 +306,23 @@ def main():
     parser.add_argument("--offset-weight", type=float, default=0.5)
     parser.add_argument("--geo-weight", type=float, default=0.2)
     parser.add_argument("--consistency-weight", type=float, default=0.1)
+    parser.add_argument(
+        "--grad-clip-norm", type=float, default=0.0,
+        help="Max gradient L2 norm (torch.nn.utils.clip_grad_norm_), applied AMP-safely via "
+             "scaler.unscale_ before clipping. 0 (default) = disabled, identical to every "
+             "prior run in this project -- none of them clip gradients.",
+    )
+    parser.add_argument(
+        "--cluster-weight", type=float, default=1.0,
+        help="Per-sample cell/country loss multiplier for --cluster-countries (T4.1e, "
+             "2026-08-20 -- error_analysis_t4_1c.py found France/Germany/Italy/Poland/Spain "
+             "broadly confusing each other; border_analysis_t4_1c.py ruled out a border-only "
+             "effect). 1.0 = no-op, identical to every prior run.",
+    )
+    parser.add_argument(
+        "--cluster-countries", nargs="+",
+        default=["France", "Germany", "Italy", "Poland", "Spain"],
+    )
     parser.add_argument("--contrastive-weight", type=float, default=0.0)
     parser.add_argument("--contrastive-temperature", type=float, default=0.1)
     parser.add_argument("--geo-scale-km", type=float, default=250.0)

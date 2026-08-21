@@ -106,12 +106,21 @@ def make_loaders(
     return train_loader, gallery_loader, val_loader, cell_info, preprocess
 
 
-def masked_cell_loss(model, cell_logits_list, cell_ids, country_idx):
+def masked_cell_loss(model, cell_logits_list, cell_ids, country_idx, sample_weight=None):
+    """`sample_weight` (T4.1e cluster-upweight screen, 2026-08-20): optional per-sample
+    multiplier, e.g. to upweight a confused-country subset (error_analysis_t4_1c.py found
+    France/Germany/Italy/Poland/Spain broadly confusing each other, not just at borders --
+    see border_analysis_t4_1c.py). `None` (default, every existing caller) is exactly the
+    original unweighted per-partition mean."""
     losses = []
     for k, logits in enumerate(cell_logits_list):
         allowed = model.country_cell_mask(k)[country_idx]
         masked = logits.masked_fill(~allowed, -1e4)
-        losses.append(F.cross_entropy(masked, cell_ids[:, k]))
+        if sample_weight is None:
+            losses.append(F.cross_entropy(masked, cell_ids[:, k]))
+        else:
+            per_sample = F.cross_entropy(masked, cell_ids[:, k], reduction="none")
+            losses.append((per_sample * sample_weight).sum() / sample_weight.sum())
     return torch.stack(losses).mean()
 
 
