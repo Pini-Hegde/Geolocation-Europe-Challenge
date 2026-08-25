@@ -1,0 +1,54 @@
+{
+  "backbone": "efficientnet_b0.ra4_e3600_r224_in1k",
+  "n_partitions": 3,
+  "min_cell_size": 40,
+  "max_cell_size": 120,
+  "embedding_dim": 256,
+  "epochs": 15,
+  "batch_size": 32,
+  "eval_batch_size": 64,
+  "samples_per_cell": 4,
+  "backbone_lr": 2e-05,
+  "head_lr": 0.0002,
+  "weight_decay": 0.001,
+  "dropout": 0.3,
+  "country_weight": 1.0,
+  "offset_weight": 0.5,
+  "geo_weight": 0.2,
+  "consistency_weight": 0.1,
+  "contrastive_weight": 0.2,
+  "contrastive_temperature": 0.1,
+  "geo_scale_km": 250.0,
+  "embedding_temperature": 0.1,
+  "local_fraction": 0.64,
+  "input_size": 288,
+  "num_workers": 8,
+  "eval_every": 5,
+  "init_checkpoint": "outputs/experiments/T4.1c_geo_supcon_5fold/fold0/best_model.pt",
+  "exp_name": "T5.3_full_final",
+  "n_params_total": 4999042,
+  "param_limit": 5000000,
+  "compliant": true,
+  "preprocess": {
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "crop_pct": 0.9,
+    "views": "global_plus_four_corner_crops",
+    "local_fraction": 0.64
+  },
+  "n_cells_per_partition": [
+    168,
+    168,
+    168
+  ],
+  "full_cells_dir": "/home/utn/elug80yc/Public/Geolocation-Europe-Challenge/outputs/protocol/geo_cells_multi_full",
+  "full_fold_id": -1
+}
