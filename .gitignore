@@ -10,3 +10,8 @@ __pycache__/
 slurm_logs/*.out
 slurm_logs/*.err
 
+
+# local symlinks created for the 2026-08-30 diagnostics
+.venv
+geo_dataset
+outputs/diag/
