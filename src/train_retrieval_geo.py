@@ -124,6 +124,16 @@ def masked_cell_loss(model, cell_logits_list, cell_ids, country_idx, sample_weig
     return torch.stack(losses).mean()
 
 
+def within_cell_soft_ce(offset_logits, target_offset_km, bin_centers, sigma_km: float):
+    """T6/R11 (§4.7c): soft cross-entropy for the distributional within-cell head. The
+    target is a Gaussian bump (width `sigma_km`) over the G*G offset-grid bins, centred on
+    the true (east, north) km offset from the blended cell centroid. Multimodal-capable,
+    unlike the Huber regressor it replaces."""
+    d2 = ((target_offset_km[:, None, :] - bin_centers[None, :, :]) ** 2).sum(-1)  # (B, G*G)
+    soft = F.softmax(-d2 / (2 * sigma_km ** 2), dim=-1)
+    return -(soft * F.log_softmax(offset_logits.float(), dim=-1)).sum(-1).mean()
+
+
 def haversine_smoothed_cell_loss(
     model, cell_logits_list, country_idx, true_vec, centroid_vecs, tau_km: float,
     sample_weight=None,
@@ -220,9 +230,8 @@ def hard_decode(model, cell_logits_list, offset_scaled, country_logits, centroid
         centroid_vectors.append(latlon_to_unit_vector_np(centroids[:, 0], centroids[:, 1]))
     center_vec = np.mean(centroid_vectors, axis=0)
     center_lat, center_lng = unit_vector_to_latlon_np(center_vec)
-    pred_lat, pred_lng = local_offset_km_to_latlon_np(
-        offset_scaled.float().cpu().numpy() * OFFSET_SCALE_KM, center_lat, center_lng
-    )
+    offset_km = model.decode_offset(offset_scaled).float().cpu().numpy()  # (B, 2) km
+    pred_lat, pred_lng = local_offset_km_to_latlon_np(offset_km, center_lat, center_lng)
     return pred_lat, pred_lng, pred_country.cpu().numpy(), pred_cells
 
 

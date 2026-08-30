@@ -24,7 +24,11 @@ from src.data.multiview import GeoBalancedBatchSampler, GlobalLocalTransform
 from src.geo.countries import COUNTRY_TO_IDX
 from src.geo.mode_retrieval import spherical_mode_decode
 from src.geo.retrieval import conditional_cell_log_probs, spherical_topk_decode
-from src.geo.spherical import haversine_km_np, latlon_to_unit_vector_np
+from src.geo.spherical import (
+    haversine_km_np,
+    latlon_to_unit_vector_np,
+    local_offset_km_to_latlon_np,
+)
 from src.models.multiview_retrieval_geo_classifier import MultiViewRetrievalGeoClassifier
 from src.train_retrieval_geo import (
     PARAM_LIMIT,
@@ -33,6 +37,7 @@ from src.train_retrieval_geo import (
     hard_decode,
     haversine_smoothed_cell_loss,
     masked_cell_loss,
+    within_cell_soft_ce,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -228,7 +233,10 @@ def evaluate(model, loader, gallery, centroids, device, args):
     model.eval()
     specs = [(w, lw, radius) for w in args.retrieval_weights
              for lw in args.local_weights for radius in args.mode_radii_km]
+    off_ws = [w for w in getattr(args, "offset_decode_weights", [0.0]) if w > 0]
     errors = {f"mode_w{w:g}_l{lw:g}_r{radius:g}": [] for w, lw, radius in specs}
+    errors.update({f"mode_w{w:g}_l{lw:g}_r{radius:g}_off{ow:g}": []
+                   for w, lw, radius in specs for ow in off_ws})
     errors.update({f"plain_w{w:g}_l{lw:g}_k10": [] for w in args.retrieval_weights
                    for lw in args.local_weights})
     hard_errors, n_country_correct, n_total = [], 0, 0
@@ -240,6 +248,8 @@ def evaluate(model, loader, gallery, centroids, device, args):
         hard_lat, hard_lng, pred_country, pred_cells = hard_decode(
             model, cell_logits, offset, country_logits, centroids
         )
+        offset_dxy = (model.decode_offset(offset, mode=getattr(args, "offset_decode_mode", "mean"))
+                      .float().cpu().numpy() if off_ws else None)
         true_lat, true_lng = batch["lat"].numpy(), batch["lng"].numpy()
         hard_errors.extend(haversine_km_np(true_lat, true_lng, hard_lat, hard_lng))
         true_country, true_cells = batch["country_idx"].numpy(), batch["cell_ids"].numpy()
@@ -280,9 +290,12 @@ def evaluate(model, loader, gallery, centroids, device, args):
                         radius_km=radius, kernel=args.mode_kernel,
                     )
                     key = f"mode_w{weight:g}_l{local_weight:g}_r{radius:g}"
-                    errors[key].extend(haversine_km_np(
-                        true_lat, true_lng, pred_lat.cpu().numpy(), pred_lng.cpu().numpy()
-                    ))
+                    pln, plg = pred_lat.cpu().numpy(), pred_lng.cpu().numpy()
+                    errors[key].extend(haversine_km_np(true_lat, true_lng, pln, plg))
+                    for ow in off_ws:
+                        slat, slng = local_offset_km_to_latlon_np(offset_dxy * ow, pln, plg)
+                        errors[f"{key}_off{ow:g}"].extend(
+                            haversine_km_np(true_lat, true_lng, slat, slng))
     decoder_stats = {}
     for key, values in errors.items():
         values = np.asarray(values)
@@ -314,6 +327,8 @@ def train_one_fold(args, fold, device, out_dir):
         country_head_hidden=int(getattr(args, "country_head_hidden", 0)),
         region_to_country=(cells["region_info"]["region_to_country"]
                            if cells.get("region_info") is not None else None),
+        offset_bins=int(getattr(args, "offset_bins", 0)),
+        offset_range_km=float(getattr(args, "offset_range_km", 80.0)),
     ).to(device)
     if args.init_checkpoint:
         model.load_state_dict(torch.load(args.init_checkpoint, map_location=device), strict=False)
@@ -387,7 +402,12 @@ def train_one_fold(args, fold, device, out_dir):
                     country_loss = (
                         F.cross_entropy(country_logits, countries, reduction="none") * sample_weight
                     ).sum() / sample_weight.sum()
-                offset_loss = F.huber_loss(offset, offsets / 100.0, delta=1.0)
+                if getattr(model, "offset_bins", 0) > 0:
+                    offset_loss = within_cell_soft_ce(
+                        offset, offsets, model.offset_bin_centers,
+                        float(getattr(args, "offset_sigma_km", 12.0)))
+                else:
+                    offset_loss = F.huber_loss(offset, offsets / 100.0, delta=1.0)
                 geo_loss = geo_distribution_loss(
                     embedding, lat, lng, args.geo_scale_km, args.embedding_temperature
                 )
@@ -619,6 +639,21 @@ def main():
         help="T6/R9 (Further_Analysis §4.2): wide RandomResizedCrop scale (0.3-1.0) + "
              "TrivialAugmentWide on the global view. For the small (11k) dataset / early "
              "convergence. No horizontal flip (keeps driving-side/text cues).")
+    parser.add_argument(
+        "--offset-bins", type=int, default=0,
+        help="T6/R11 (§4.7c / F9): >0 replaces the unimodal Huber offset regressor with a "
+             "distributional within-cell head -- a classifier over a G*G grid of (east,north) "
+             "km offsets. Try 9-13.")
+    parser.add_argument("--offset-range-km", type=float, default=80.0,
+                        help="half-width of the within-cell offset grid in km.")
+    parser.add_argument("--offset-sigma-km", type=float, default=12.0,
+                        help="Gaussian width of the soft within-cell target.")
+    parser.add_argument(
+        "--offset-decode-weights", type=float, nargs="+", default=[0.0],
+        help="T6/R11: shift the retrieval-decoded point by w * decode_offset (from the "
+             "distributional head). 0 = no shift (report the head trains but stays out of "
+             "decode). Try 0 0.5 1.0.")
+    parser.add_argument("--offset-decode-mode", choices=["mean", "mode"], default="mean")
     parser.add_argument("--exp-name", required=True)
     args = parser.parse_args()
     torch.manual_seed(1234 + args.seed)

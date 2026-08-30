@@ -29,6 +29,8 @@ class RetrievalGeoClassifier(nn.Module):
         use_location_encoder: bool = False,
         country_head_hidden: int = 0,
         region_to_country: "np.ndarray | None" = None,
+        offset_bins: int = 0,
+        offset_range_km: float = 80.0,
     ) -> None:
         super().__init__()
         if len(n_cells_per_partition) != len(cell_to_country_per_partition):
@@ -73,7 +75,24 @@ class RetrievalGeoClassifier(nn.Module):
         self.cls_heads = nn.ModuleList(
             nn.Linear(head_in, n_cells) for n_cells in n_cells_per_partition
         )
-        self.offset_head = nn.Linear(feature_dim, 2)
+        # T6/R11 (Further_Analysis §4.7c / F9): the Huber offset regressor learned nothing
+        # (cell+offset 172 vs centroid 169) -- *unimodal* regression averages between the
+        # multiple plausible within-cell locations. offset_bins>0 replaces it with a
+        # distributional head: a classifier over a G*G grid of (east, north) km offsets in
+        # [-R, R]^2, trained with a Gaussian-smoothed soft target, so it can be multimodal.
+        self.offset_bins = int(offset_bins)
+        self.offset_range_km = float(offset_range_km)
+        if self.offset_bins > 0:
+            g = self.offset_bins
+            axis = torch.linspace(-self.offset_range_km, self.offset_range_km, g)
+            gy, gx = torch.meshgrid(axis, axis, indexing="ij")
+            self.register_buffer(
+                "offset_bin_centers", torch.stack([gx.reshape(-1), gy.reshape(-1)], dim=-1),
+                persistent=False,
+            )  # (G*G, 2) in km, (east, north)
+            self.offset_head = nn.Linear(feature_dim, g * g)
+        else:
+            self.offset_head = nn.Linear(feature_dim, 2)
         self.embedding_head = nn.Linear(feature_dim, embedding_dim)
 
         # T6/E8: an intermediate country->region head (Müller-Budack / GeoGuessNet hierarchy).
@@ -116,6 +135,17 @@ class RetrievalGeoClassifier(nn.Module):
 
     def country_cell_mask(self, partition: int) -> torch.Tensor:
         return getattr(self, f"country_cell_mask_{partition}")
+
+    def decode_offset(self, offset_out: torch.Tensor, mode: str = "mean") -> torch.Tensor:
+        """Map the offset head's raw output to a within-cell (east, north) shift in km.
+        Unimodal head: `offset_out` is (B, 2) in units of 100 km. Distributional head:
+        `offset_out` is (B, G*G) logits -> `mean` = expected bin, `mode` = argmax bin."""
+        if self.offset_bins <= 0:
+            return offset_out.float() * 100.0
+        p = F.softmax(offset_out.float(), dim=-1)
+        if mode == "mode":
+            return self.offset_bin_centers[p.argmax(dim=-1)]
+        return p @ self.offset_bin_centers
 
     def encode_location(self, lat_deg: torch.Tensor, lng_deg: torch.Tensor) -> torch.Tensor:
         return self.location_encoder(lat_deg, lng_deg)
