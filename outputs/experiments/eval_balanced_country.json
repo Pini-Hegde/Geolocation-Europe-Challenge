@@ -1,0 +1,1191 @@
+{
+  "baseline": {
+    "median_km": 129.00238789772297,
+    "mean_km": 442.0738420208118,
+    "frac_lt_200km": 0.5901360544217688,
+    "country_acc": 0.76828231292517,
+    "per_country": {
+      "Belarus": {
+        "n": 173,
+        "median_km": 84.6,
+        "country_acc": 0.908
+      },
+      "Finland": {
+        "n": 200,
+        "median_km": 75.7,
+        "country_acc": 0.905
+      },
+      "France": {
+        "n": 200,
+        "median_km": 451.1,
+        "country_acc": 0.565
+      },
+      "Germany": {
+        "n": 200,
+        "median_km": 295.2,
+        "country_acc": 0.695
+      },
+      "Iceland": {
+        "n": 192,
+        "median_km": 53.8,
+        "country_acc": 0.948
+      },
+      "Italy": {
+        "n": 200,
+        "median_km": 329.2,
+        "country_acc": 0.625
+      },
+      "Norway": {
+        "n": 200,
+        "median_km": 84.6,
+        "country_acc": 0.835
+      },
+      "Poland": {
+        "n": 187,
+        "median_km": 219.4,
+        "country_acc": 0.626
+      },
+      "Spain": {
+        "n": 200,
+        "median_km": 312.2,
+        "country_acc": 0.63
+      },
+      "Sweden": {
+        "n": 200,
+        "median_km": 107.1,
+        "country_acc": 0.795
+      },
+      "Turkey": {
+        "n": 200,
+        "median_km": 116.8,
+        "country_acc": 0.79
+      },
+      "United_Kingdom": {
+        "n": 200,
+        "median_km": 116.5,
+        "country_acc": 0.915
+      }
+    }
+  },
+  "marginal": "true",
+  "true_counts": [
+    173,
+    200,
+    200,
+    200,
+    192,
+    200,
+    200,
+    187,
+    200,
+    200,
+    200,
+    200
+  ],
+  "variants": {
+    "temp1_cf1": {
+      "hard_mask": {
+        "median_km": 134.351076431099,
+        "mean_km": 452.6219214053596,
+        "frac_lt_200km": 0.5795068027210885,
+        "country_acc": 0.7712585034013606,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 493.6,
+            "country_acc": 0.59
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 310.5,
+            "country_acc": 0.645
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.953
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.645
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.83
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 206.8,
+            "country_acc": 0.701
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 255.1,
+            "country_acc": 0.685
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 113.6,
+            "country_acc": 0.81
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 120.6,
+            "country_acc": 0.76
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 120.7,
+            "country_acc": 0.865
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.1661033961842,
+        "mean_km": 451.068939223604,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7712585034013606,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 467.4,
+            "country_acc": 0.59
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 310.5,
+            "country_acc": 0.645
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.953
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 329.9,
+            "country_acc": 0.645
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.83
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 206.8,
+            "country_acc": 0.701
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 252.7,
+            "country_acc": 0.685
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.81
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 120.6,
+            "country_acc": 0.76
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 120.7,
+            "country_acc": 0.865
+          }
+        }
+      }
+    },
+    "temp1_cf0.7": {
+      "hard_mask": {
+        "median_km": 133.41792228193185,
+        "mean_km": 448.29653372417573,
+        "frac_lt_200km": 0.5816326530612245,
+        "country_acc": 0.7729591836734694,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 86.9,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 494.7,
+            "country_acc": 0.585
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 311.4,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 329.9,
+            "country_acc": 0.645
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.825
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 191.7,
+            "country_acc": 0.711
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 257.9,
+            "country_acc": 0.69
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.82
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 125.4,
+            "country_acc": 0.75
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 119.9,
+            "country_acc": 0.885
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.1661033961842,
+        "mean_km": 447.7374106147245,
+        "frac_lt_200km": 0.5824829931972789,
+        "country_acc": 0.7729591836734694,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 483.3,
+            "country_acc": 0.585
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 311.4,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 329.9,
+            "country_acc": 0.645
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.825
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 191.7,
+            "country_acc": 0.711
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 257.9,
+            "country_acc": 0.69
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.82
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 125.4,
+            "country_acc": 0.75
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 119.9,
+            "country_acc": 0.885
+          }
+        }
+      }
+    },
+    "temp1_cf0.5": {
+      "hard_mask": {
+        "median_km": 132.74614423140815,
+        "mean_km": 447.75241804161266,
+        "frac_lt_200km": 0.5816326530612245,
+        "country_acc": 0.7708333333333334,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.913
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.9
+          },
+          "France": {
+            "n": 200,
+            "median_km": 525.7,
+            "country_acc": 0.55
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.69
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.63
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 224.1,
+            "country_acc": 0.658
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 298.6,
+            "country_acc": 0.66
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.785
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 118.0,
+            "country_acc": 0.905
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 132.92109301644803,
+        "mean_km": 449.5786849653443,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7708333333333334,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.913
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.9
+          },
+          "France": {
+            "n": 200,
+            "median_km": 525.7,
+            "country_acc": 0.55
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.69
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.63
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 224.1,
+            "country_acc": 0.658
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 312.2,
+            "country_acc": 0.66
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.785
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 118.0,
+            "country_acc": 0.905
+          }
+        }
+      }
+    },
+    "temp1_cf0.35": {
+      "hard_mask": {
+        "median_km": 133.75763246619147,
+        "mean_km": 453.79306507320996,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7691326530612245,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.905
+          },
+          "France": {
+            "n": 200,
+            "median_km": 517.2,
+            "country_acc": 0.565
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.695
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.625
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 227.4,
+            "country_acc": 0.631
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 326.4,
+            "country_acc": 0.635
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.79
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 116.5,
+            "country_acc": 0.915
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.75763246619147,
+        "mean_km": 453.79306463113227,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7691326530612245,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.905
+          },
+          "France": {
+            "n": 200,
+            "median_km": 517.2,
+            "country_acc": 0.565
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.695
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.625
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 227.4,
+            "country_acc": 0.631
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 326.4,
+            "country_acc": 0.635
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.79
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 116.5,
+            "country_acc": 0.915
+          }
+        }
+      }
+    },
+    "temp2_cf1": {
+      "hard_mask": {
+        "median_km": 133.75763246619147,
+        "mean_km": 448.9909078652547,
+        "frac_lt_200km": 0.5803571428571429,
+        "country_acc": 0.7729591836734694,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 86.9,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 491.8,
+            "country_acc": 0.59
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 310.5,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.953
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 326.0,
+            "country_acc": 0.665
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.83
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 206.8,
+            "country_acc": 0.701
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 255.1,
+            "country_acc": 0.685
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.805
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 120.6,
+            "country_acc": 0.76
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 120.7,
+            "country_acc": 0.87
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.1661033961842,
+        "mean_km": 449.93121579039786,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7729591836734694,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 451.1,
+            "country_acc": 0.59
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 311.0,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.953
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 329.2,
+            "country_acc": 0.665
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.83
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 210.3,
+            "country_acc": 0.701
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 262.7,
+            "country_acc": 0.685
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 106.7,
+            "country_acc": 0.805
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 120.6,
+            "country_acc": 0.76
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 120.2,
+            "country_acc": 0.87
+          }
+        }
+      }
+    },
+    "temp2_cf0.7": {
+      "hard_mask": {
+        "median_km": 134.351076431099,
+        "mean_km": 452.2295147398123,
+        "frac_lt_200km": 0.5799319727891157,
+        "country_acc": 0.7712585034013606,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 88.8,
+            "country_acc": 0.89
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 467.4,
+            "country_acc": 0.595
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 311.4,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 333.6,
+            "country_acc": 0.64
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.815
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 191.7,
+            "country_acc": 0.711
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 255.1,
+            "country_acc": 0.695
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.815
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 129.5,
+            "country_acc": 0.745
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 119.9,
+            "country_acc": 0.885
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.1661033961842,
+        "mean_km": 447.5836507661292,
+        "frac_lt_200km": 0.5820578231292517,
+        "country_acc": 0.7712585034013606,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 86.9,
+            "country_acc": 0.89
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.7,
+            "country_acc": 0.885
+          },
+          "France": {
+            "n": 200,
+            "median_km": 467.4,
+            "country_acc": 0.595
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 311.4,
+            "country_acc": 0.65
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.4,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 329.9,
+            "country_acc": 0.64
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 87.3,
+            "country_acc": 0.815
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 191.7,
+            "country_acc": 0.711
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 257.9,
+            "country_acc": 0.695
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.815
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 125.4,
+            "country_acc": 0.745
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 119.9,
+            "country_acc": 0.885
+          }
+        }
+      }
+    },
+    "temp2_cf0.5": {
+      "hard_mask": {
+        "median_km": 132.92109301644803,
+        "mean_km": 448.5063041111707,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7699829931972789,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 86.9,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.9
+          },
+          "France": {
+            "n": 200,
+            "median_km": 530.6,
+            "country_acc": 0.545
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.69
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 333.6,
+            "country_acc": 0.635
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 224.1,
+            "country_acc": 0.663
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 298.6,
+            "country_acc": 0.66
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.79
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.785
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 118.0,
+            "country_acc": 0.905
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 132.74614423140815,
+        "mean_km": 447.30988944681246,
+        "frac_lt_200km": 0.5816326530612245,
+        "country_acc": 0.7699829931972789,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.902
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.9
+          },
+          "France": {
+            "n": 200,
+            "median_km": 525.7,
+            "country_acc": 0.545
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.69
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 333.6,
+            "country_acc": 0.635
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 224.1,
+            "country_acc": 0.663
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 298.6,
+            "country_acc": 0.66
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.79
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.785
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 118.0,
+            "country_acc": 0.905
+          }
+        }
+      }
+    },
+    "temp2_cf0.35": {
+      "hard_mask": {
+        "median_km": 133.75763246619147,
+        "mean_km": 453.97122694531373,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7691326530612245,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.905
+          },
+          "France": {
+            "n": 200,
+            "median_km": 517.2,
+            "country_acc": 0.565
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.695
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.625
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 227.4,
+            "country_acc": 0.631
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 326.4,
+            "country_acc": 0.635
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.79
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 116.5,
+            "country_acc": 0.915
+          }
+        }
+      },
+      "soft_bonus": {
+        "median_km": 133.75763246619147,
+        "mean_km": 453.7932909694229,
+        "frac_lt_200km": 0.5812074829931972,
+        "country_acc": 0.7691326530612245,
+        "per_country": {
+          "Belarus": {
+            "n": 173,
+            "median_km": 85.5,
+            "country_acc": 0.908
+          },
+          "Finland": {
+            "n": 200,
+            "median_km": 75.6,
+            "country_acc": 0.905
+          },
+          "France": {
+            "n": 200,
+            "median_km": 517.2,
+            "country_acc": 0.565
+          },
+          "Germany": {
+            "n": 200,
+            "median_km": 296.9,
+            "country_acc": 0.695
+          },
+          "Iceland": {
+            "n": 192,
+            "median_km": 53.8,
+            "country_acc": 0.948
+          },
+          "Italy": {
+            "n": 200,
+            "median_km": 340.3,
+            "country_acc": 0.625
+          },
+          "Norway": {
+            "n": 200,
+            "median_km": 90.3,
+            "country_acc": 0.835
+          },
+          "Poland": {
+            "n": 187,
+            "median_km": 227.4,
+            "country_acc": 0.631
+          },
+          "Spain": {
+            "n": 200,
+            "median_km": 326.4,
+            "country_acc": 0.635
+          },
+          "Sweden": {
+            "n": 200,
+            "median_km": 111.5,
+            "country_acc": 0.795
+          },
+          "Turkey": {
+            "n": 200,
+            "median_km": 116.8,
+            "country_acc": 0.79
+          },
+          "United_Kingdom": {
+            "n": 200,
+            "median_km": 116.5,
+            "country_acc": 0.915
+          }
+        }
+      }
+    }
+  }
+}

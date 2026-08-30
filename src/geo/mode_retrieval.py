@@ -13,6 +13,7 @@ def spherical_mode_decode(
     radius_km: float = 100.0,
     vote_temperature: float = 1.0,
     kernel: str = "gaussian",
+    geometric_median_iters: int = 0,
 ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
     """Select the strongest coherent geographic mode before spherical averaging.
 
@@ -41,10 +42,29 @@ def spherical_mode_decode(
     selected_weights = selected_weights / selected_weights.sum(
         dim=-1, keepdim=True
     ).clamp_min(1e-12)
-    pred_vec = F.normalize(
-        (selected_weights.unsqueeze(-1) * vectors).sum(dim=1), dim=-1, eps=1e-8
-    )
+    if geometric_median_iters > 0:
+        pred_vec = _weighted_geometric_median(vectors, selected_weights, geometric_median_iters)
+    else:
+        pred_vec = F.normalize(
+            (selected_weights.unsqueeze(-1) * vectors).sum(dim=1), dim=-1, eps=1e-8
+        )
     x, y, z = pred_vec.unbind(dim=-1)
     pred_lat = torch.rad2deg(torch.asin(z.clamp(-1.0, 1.0)))
     pred_lng = torch.rad2deg(torch.atan2(y, x))
     return pred_lat, pred_lng, top_indices
+
+
+def _weighted_geometric_median(vectors, weights, iters=8, eps=1e-6):
+    """Weiszfeld iteration for the weighted geometric median of unit vectors, done in the
+    tangent chart at the current estimate then re-projected. The geometric median is the
+    point estimate that minimises expected great-circle distance -- the exact minimiser of
+    the challenge's median-haversine objective, and far more robust to a single far outlier
+    (e.g. a Canary-Islands retrieval among mainland-Spain candidates) than the spherical mean.
+    `vectors`: (B, M, 3) unit vectors; `weights`: (B, M) non-negative, sum to 1."""
+    p = F.normalize((weights.unsqueeze(-1) * vectors).sum(dim=1), dim=-1, eps=1e-8)  # start = mean
+    for _ in range(iters):
+        cos = (vectors * p.unsqueeze(1)).sum(-1).clamp(-1.0, 1.0)
+        ang = torch.acos(cos)  # (B, M) great-circle angle to current estimate
+        w = weights / (ang + eps)  # Weiszfeld reweighting
+        p = F.normalize((w.unsqueeze(-1) * vectors).sum(dim=1), dim=-1, eps=1e-8)
+    return p

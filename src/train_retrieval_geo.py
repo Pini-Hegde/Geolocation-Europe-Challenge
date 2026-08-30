@@ -124,6 +124,32 @@ def masked_cell_loss(model, cell_logits_list, cell_ids, country_idx, sample_weig
     return torch.stack(losses).mean()
 
 
+def haversine_smoothed_cell_loss(
+    model, cell_logits_list, country_idx, true_vec, centroid_vecs, tau_km: float,
+    sample_weight=None,
+):
+    """PIGEON-style (Haas et al. 2024, Eq. 2-3) distance-based label smoothing for the
+    per-country cell classifier. Instead of a one-hot target on the assigned cell, the
+    target for cell i is softmax(-haversine(centroid_i, true_point) / tau_km) over that
+    sample's country's cells -- so cells near the true point share the label mass and the
+    loss is a smooth function of geographic distance. `centroid_vecs[k]` is a
+    (n_cells_k, 3) tensor of cell-centroid unit vectors. `tau_km` sets the smoothing
+    width; 0 disables this and callers should use `masked_cell_loss` instead."""
+    losses = []
+    for k, logits in enumerate(cell_logits_list):
+        allowed = model.country_cell_mask(k)[country_idx]  # (B, n_cells_k) bool
+        cos = (true_vec.float() @ centroid_vecs[k].to(logits.device).float().T).clamp(-1.0, 1.0)
+        hav_km = 6371.0088 * torch.arccos(cos)  # (B, n_cells_k), no grad (targets only)
+        target = torch.softmax((-hav_km / tau_km).masked_fill(~allowed, -1e4), dim=-1)
+        logp = torch.log_softmax(logits.float().masked_fill(~allowed, -1e4), dim=-1)
+        per_sample = -(target * logp).sum(dim=-1)
+        if sample_weight is None:
+            losses.append(per_sample.mean())
+        else:
+            losses.append((per_sample * sample_weight).sum() / sample_weight.sum())
+    return torch.stack(losses).mean()
+
+
 def geo_distribution_loss(
     embeddings: torch.Tensor, lat: torch.Tensor, lng: torch.Tensor,
     geo_scale_km: float, embedding_temperature: float,
@@ -149,8 +175,11 @@ def geo_distribution_loss(
 def build_optimizer(model, backbone_lr: float, head_lr: float, weight_decay: float):
     head_params = (
         list(model.country_head.parameters()) + list(model.cls_heads.parameters())
+        + list(model.cell_trunk.parameters())
         + list(model.offset_head.parameters()) + list(model.embedding_head.parameters())
     )
+    if getattr(model, "use_location_encoder", False):
+        head_params += list(model.location_encoder.parameters())
     return torch.optim.AdamW(
         [
             {"params": model.backbone.parameters(), "lr": backbone_lr},

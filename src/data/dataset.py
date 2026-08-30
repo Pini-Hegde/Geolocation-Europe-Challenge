@@ -30,6 +30,7 @@ from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
 
 from src.geo.countries import COUNTRY_TO_IDX
+from src.geo.orientation import fix_orientation as _fix_orientation
 from src.geo.spherical import (
     latlon_to_local_offset_km_np,
     latlon_to_unit_vector_np,
@@ -124,17 +125,20 @@ def load_fold_cells_multi(
     }
 
 
-def load_fold_region(val_fold: int) -> dict:
+def load_fold_region(val_fold: int, region_dir: Path | None = None) -> dict:
     """T4.1d: same shape as `load_fold_cells`, but for the single coarse per-country
-    "region" partition built by `src/protocol/geo_cells_region.py`
-    (`outputs/protocol/geo_cells_region/fold{f}_cells.json`). Kept SEPARATE from
-    `load_fold_cells_multi`'s K fine partitions -- deliberately not folded into that list,
-    because a region's centroid is a poor per-image locator (it spans a large chunk of a
-    country) and must NOT feed the offset-regression target the way the fine partitions'
-    blended centroid does (see `GeoDataset`'s docstring and
-    `Experiment_Design.md` Tier 4 T4.1d). The region head only contributes an additional
-    conditioning term to retrieval/hierarchy SCORING, not to offset supervision."""
-    path = GEO_CELLS_REGION_DIR / f"fold{val_fold}_cells.json"
+    "region" partition. Kept SEPARATE from `load_fold_cells_multi`'s K fine partitions --
+    deliberately not folded into that list, because a region's centroid is a poor per-image
+    locator and must NOT feed the offset-regression target the way the fine partitions'
+    blended centroid does. The region head only contributes an additional conditioning term
+    to retrieval/hierarchy SCORING, not to offset supervision.
+
+    `region_dir` (T6/E8): override to read a k-means region scheme (file
+    `<region_dir>/fold{f}_region_cells.json`) instead of the default kd-tree one."""
+    if region_dir is not None:
+        path = Path(region_dir) / f"fold{val_fold}_region_cells.json"
+    else:
+        path = GEO_CELLS_REGION_DIR / f"fold{val_fold}_cells.json"
     data = json.loads(path.read_text())
     n_regions = data["meta"]["n_cells"]
     centroids = np.zeros((n_regions, 2), dtype=np.float64)
@@ -217,7 +221,7 @@ class GeoDataset(Dataset):
     def __init__(
         self, df: pd.DataFrame, train: bool, input_size: int = INPUT_SIZE,
         cell_info: dict | None = None, multi_cell_info: dict | None = None,
-        region_info: dict | None = None,
+        region_info: dict | None = None, fix_orientation: bool = False,
     ):
         assert cell_info is None or multi_cell_info is None, (
             "cell_info and multi_cell_info are mutually exclusive"
@@ -227,6 +231,10 @@ class GeoDataset(Dataset):
         self.cell_info = cell_info
         self.multi_cell_info = multi_cell_info
         self.region_info = region_info
+        # T6 (2026-08-27): apply geo_dataset/orientation_flags.json -- rotate the ~8.9% of
+        # images flagged upside down by 180 deg. Off by default so every pre-T6 run is
+        # byte-identical; T6+ training/eval scripts pass fix_orientation=True.
+        self.fix_orientation = fix_orientation
 
     def __len__(self) -> int:
         return len(self.df)
@@ -234,6 +242,8 @@ class GeoDataset(Dataset):
     def __getitem__(self, idx: int):
         row = self.df.iloc[idx]
         image = Image.open(IMAGES_DIR / row["filename"]).convert("RGB")
+        if self.fix_orientation:
+            image = _fix_orientation(image, row["filename"])
         image = self.transform(image)
 
         target_vec = latlon_to_unit_vector_np(np.array([row["lat"]]), np.array([row["lng"]]))[0]

@@ -1,0 +1,133 @@
+{
+  "specs": [
+    "outputs/experiments/T6_E3e_cells368_hsmooth45_fold0/fold0/best_model.pt:geo_cells_multi_fine:x:x:x",
+    "outputs/experiments/T6_E4_geoclip_fold0/fold0/best_model.pt:geo_cells_multi_fine:x:x:x",
+    "outputs/experiments/T6_E3d_cells192_hsmooth65_fold0/fold0/best_model.pt:geo_cells_multi_mid:x:x:x",
+    "failed_experiments/T6_E3h_tightcrops_neutral/run/fold0/best_model.pt:geo_cells_multi_fine:x:x:x"
+  ],
+  "best": "w8_r120_hard_m100",
+  "stats": {
+    "w6_r120_hard_m100": {
+      "median_km": 130.74480062840723,
+      "mean_km": 412.86057345227215,
+      "frac_lt_200km": 0.5901360544217688
+    },
+    "w6_r150_hard_m100": {
+      "median_km": 131.69511556579138,
+      "mean_km": 412.4415493644048,
+      "frac_lt_200km": 0.5960884353741497
+    },
+    "w6_r180_hard_m100": {
+      "median_km": 131.5367399982039,
+      "mean_km": 413.23396487942273,
+      "frac_lt_200km": 0.5977891156462585
+    },
+    "w6_r220_hard_m100": {
+      "median_km": 131.91049009111663,
+      "mean_km": 413.744555473612,
+      "frac_lt_200km": 0.5994897959183674
+    },
+    "w8_r120_hard_m100": {
+      "median_km": 129.96935320358472,
+      "mean_km": 407.65035821752593,
+      "frac_lt_200km": 0.5914115646258503
+    },
+    "w8_r150_hard_m100": {
+      "median_km": 130.9140809581165,
+      "mean_km": 405.5964470784918,
+      "frac_lt_200km": 0.5982142857142857
+    },
+    "w8_r180_hard_m100": {
+      "median_km": 131.91059141593308,
+      "mean_km": 405.6182363552315,
+      "frac_lt_200km": 0.5994897959183674
+    },
+    "w8_r220_hard_m100": {
+      "median_km": 131.32079287939786,
+      "mean_km": 404.62545955190944,
+      "frac_lt_200km": 0.6016156462585034
+    },
+    "w12_r120_hard_m100": {
+      "median_km": 130.71763116068536,
+      "mean_km": 405.4282046481453,
+      "frac_lt_200km": 0.5909863945578231
+    },
+    "w12_r150_hard_m100": {
+      "median_km": 130.3001116036241,
+      "mean_km": 403.0044184474378,
+      "frac_lt_200km": 0.5977891156462585
+    },
+    "w12_r180_hard_m100": {
+      "median_km": 131.1731973619722,
+      "mean_km": 401.2536895128395,
+      "frac_lt_200km": 0.5994897959183674
+    },
+    "w12_r220_hard_m100": {
+      "median_km": 130.5396089912254,
+      "mean_km": 397.78141299381434,
+      "frac_lt_200km": 0.6037414965986394
+    }
+  },
+  "per_country": {
+    "Belarus": {
+      "n": 173,
+      "median_km": 77.05866270967569,
+      "mean_km": 149.20920010506094
+    },
+    "Finland": {
+      "n": 200,
+      "median_km": 81.39978565760663,
+      "mean_km": 148.64085781453298
+    },
+    "France": {
+      "n": 200,
+      "median_km": 467.893397495268,
+      "mean_km": 656.4892831136344
+    },
+    "Germany": {
+      "n": 200,
+      "median_km": 284.75284985857377,
+      "mean_km": 450.98859572394605
+    },
+    "Iceland": {
+      "n": 192,
+      "median_km": 60.7583082053341,
+      "mean_km": 287.05978184280696
+    },
+    "Italy": {
+      "n": 200,
+      "median_km": 299.56397241000377,
+      "mean_km": 561.3269025000704
+    },
+    "Norway": {
+      "n": 200,
+      "median_km": 85.76107571421917,
+      "mean_km": 282.6319374129631
+    },
+    "Poland": {
+      "n": 187,
+      "median_km": 256.7256606297066,
+      "mean_km": 524.4415001633164
+    },
+    "Spain": {
+      "n": 200,
+      "median_km": 245.79051790442907,
+      "mean_km": 751.8087449985827
+    },
+    "Sweden": {
+      "n": 200,
+      "median_km": 106.69334078053959,
+      "mean_km": 259.80455616102756
+    },
+    "Turkey": {
+      "n": 200,
+      "median_km": 89.70416035098995,
+      "mean_km": 476.31733858565366
+    },
+    "United_Kingdom": {
+      "n": 200,
+      "median_km": 115.16442435818857,
+      "mean_km": 310.9638450150214
+    }
+  }
+}

@@ -22,8 +22,11 @@ class MultiViewRetrievalGeoClassifier(RetrievalGeoClassifier):
         local_mean = view_features[:, 1:].mean(dim=1)
         fused = self.dropout(0.5 * (view_features[:, 0] + local_mean))
         country_logits = self.country_head(fused)
-        cell_logits = [head(fused) for head in self.cls_heads]
+        cell_logits = [head(self.cell_trunk(fused)) for head in self.cls_heads]
         offset = self.offset_head(fused)
+        # region logits (T6/E8) stashed rather than returned, to keep the 5-tuple signature
+        # every existing caller unpacks. Valid only synchronously after this forward call.
+        self.last_region_logits = self.region_head(fused) if self.n_regions else None
         view_embeddings = F.normalize(
             self.embedding_head(self.dropout(view_features)), dim=-1, eps=1e-8
         )

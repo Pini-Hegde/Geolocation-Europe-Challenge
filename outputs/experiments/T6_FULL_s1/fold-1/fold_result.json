@@ -1,0 +1,20 @@
+{
+  "best_epoch": 54,
+  "n_params_total": 4944970,
+  "preprocess": {
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "crop_pct": 0.9,
+    "views": "global_plus_four_corner_crops",
+    "local_fraction": 0.64
+  },
+  "full_data": true
+}

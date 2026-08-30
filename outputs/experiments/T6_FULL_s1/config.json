@@ -1,0 +1,82 @@
+{
+  "backbone": "efficientnet_b0.ra4_e3600_r224_in1k",
+  "folds": [
+    -1
+  ],
+  "n_partitions": 4,
+  "cells_dir": "outputs/protocol/geo_cells_multi_fine_full",
+  "embedding_dim": 224,
+  "country_head_hidden": 0,
+  "cell_proj_dim": 224,
+  "epochs": 55,
+  "batch_size": 32,
+  "eval_batch_size": 24,
+  "samples_per_cell": 4,
+  "backbone_lr": 0.0001,
+  "head_lr": 0.001,
+  "weight_decay": 0.001,
+  "dropout": 0.3,
+  "country_weight": 1.0,
+  "offset_weight": 0.5,
+  "geo_weight": 0.2,
+  "consistency_weight": 0.1,
+  "grad_clip_norm": 0.0,
+  "cluster_weight": 1.0,
+  "cluster_countries": [
+    "France",
+    "Germany",
+    "Italy",
+    "Poland",
+    "Spain"
+  ],
+  "ema_decay": 0.0,
+  "label_smooth_tau": 45.0,
+  "contrastive_weight": 0.2,
+  "contrastive_temperature": 0.1,
+  "loc_align_weight": 0.0,
+  "loc_temperature": 0.1,
+  "loc_decode_weight": 0.0,
+  "contrastive_country_blend": 0.0,
+  "geo_scale_km": 250.0,
+  "embedding_temperature": 0.1,
+  "retrieval_weights": [
+    8.0,
+    16.0
+  ],
+  "local_weights": [
+    0.0
+  ],
+  "mode_radii_km": [
+    150.0,
+    200.0,
+    250.0
+  ],
+  "mode_top_m": 50,
+  "mode_kernel": "hard",
+  "local_fraction": 0.64,
+  "input_size": 288,
+  "num_workers": 8,
+  "eval_every": 1,
+  "init_checkpoint": "",
+  "fix_orientation": true,
+  "seed": 1,
+  "exp_name": "T6_FULL_s1",
+  "n_params_total": 4944970,
+  "param_limit": 5000000,
+  "compliant": true,
+  "preprocess": {
+    "mean": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "std": [
+      0.5,
+      0.5,
+      0.5
+    ],
+    "crop_pct": 0.9,
+    "views": "global_plus_four_corner_crops",
+    "local_fraction": 0.64
+  }
+}

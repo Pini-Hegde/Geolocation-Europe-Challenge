@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Geolocation Europe Challenge — Progress Report</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body { font: 10.5pt/1.5 "Georgia","Times New Roman",serif; color: #1a1a1a; max-width: 100%; }
+  h1 { font-size: 21pt; margin: 0 0 2pt; letter-spacing: -.3pt; }
+  h2 { font-size: 14pt; margin: 22pt 0 6pt; padding-bottom: 3pt; border-bottom: 2px solid #333; }
+  h3 { font-size: 11.5pt; margin: 14pt 0 4pt; color: #222; }
+  .sub { color: #555; font-size: 10pt; margin: 0 0 4pt; }
+  p { margin: 5pt 0; }
+  table { border-collapse: collapse; width: 100%; margin: 8pt 0; font-size: 9pt; }
+  th, td { border: 1px solid #bbb; padding: 3pt 6pt; text-align: left; vertical-align: top; }
+  th { background: #eee; font-weight: bold; }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  .win { background: #e6f4e6; }
+  .fail { background: #fbe9e9; }
+  .neutral { background: #fdf6e3; }
+  code { font: 8.7pt "SF Mono",Menlo,Consolas,monospace; background: #f2f2f2; padding: 0 3px; border-radius: 2px; }
+  .box { border: 1px solid #ccc; background: #f8f8f8; padding: 8pt 12pt; margin: 8pt 0; border-radius: 3px; }
+  .kpi { display: flex; gap: 10pt; margin: 8pt 0; }
+  .kpi div { flex: 1; border: 1px solid #ccc; border-radius: 4px; padding: 8pt; text-align: center; }
+  .kpi .big { font-size: 17pt; font-weight: bold; display: block; }
+  .kpi .lbl { font-size: 8pt; color: #666; }
+  ul { margin: 4pt 0; padding-left: 18pt; }
+  li { margin: 2pt 0; }
+  .foot { color: #888; font-size: 8pt; margin-top: 4pt; }
+  hr { border: 0; border-top: 1px solid #ddd; margin: 14pt 0; }
+</style>
+</head>
+<body>
+
+<h1>Street-Level Geolocation Across 12 European Countries</h1>
+<p class="sub">Progress report &nbsp;·&nbsp; generated 2026-08-29 &nbsp;·&nbsp; branch <code>pini/uni_machine_code</code></p>
+
+<h2>1. Problem statement</h2>
+<p>Given a 512&times;512 street-level photograph taken in one of <b>12 European countries</b>
+(Belarus, Finland, France, Germany, Iceland, Italy, Norway, Poland, Spain, Sweden, Turkey,
+United Kingdom), predict the GPS coordinate <code>(lat, lng)</code> at which it was taken.</p>
+<table>
+<tr><th>Item</th><th>Detail</th></tr>
+<tr><td>Training data</td><td>11,758 labelled images (<code>filename, country, iso, lat, lng</code>), 864&ndash;1000 per country</td></tr>
+<tr><td>Test data</td><td>2,400 unlabelled "holdout" images &mdash; we submit <code>predictions.csv</code></td></tr>
+<tr><td>Metric</td><td><b>Median haversine distance (km)</b> to the true coordinate over the 2,400 test images. Lower is better. Mean distance is the tie-break. Reported secondary rates: &lt;200&nbsp;km ("got the city"), &lt;750&nbsp;km ("got the country").</td></tr>
+<tr><td>Hard constraints</td><td>(1) submitted model <b>&le; 5,000,000 parameters</b> (pretrained weights count); (2) train <b>only</b> on the provided images &mdash; no external datasets, no scraped or generated data.</td></tr>
+<tr><td>Grading</td><td>50% method &amp; code quality · 35% write-up · 15% leaderboard</td></tr>
+</table>
+
+<h2>2. Where we stand</h2>
+<div class="kpi">
+  <div><span class="big">139.8&nbsp;km</span><span class="lbl">current <i>submitted</i> holdout score (rank #5 / 12)</span></div>
+  <div><span class="big">122.3&nbsp;km</span><span class="lbl">best cross-validation median achieved this session (fold&nbsp;0)</span></div>
+  <div><span class="big">47.4&nbsp;km</span><span class="lbl">leaderboard #1 (the target to chase)</span></div>
+</div>
+<p>A better submission file is ready but <b>not yet uploaded</b>:
+<code>submission_candidates/preds_kdtree_fulldata_mode.csv</code> &mdash; from the current
+best single model trained on 100% of the data. Expected holdout ≈ 125&ndash;130&nbsp;km
+(&rarr; rank #4).</p>
+
+<h3>The competition leaderboard (as observed)</h3>
+<table>
+<tr><th class="n">Rank</th><th>Participant</th><th class="n">Median km</th><th class="n">Mean km</th><th class="n">&lt;200 km</th><th class="n">&lt;750 km</th><th class="n">Subs</th><th class="n">Params</th></tr>
+<tr><td class="n">1</td><td>Vaibhav Prajapati</td><td class="n">47.4</td><td class="n">372.5</td><td class="n">65.4%</td><td class="n">82.3%</td><td class="n">11</td><td class="n">4.52M</td></tr>
+<tr><td class="n">2</td><td>Kamaal Ahmed</td><td class="n">62.7</td><td class="n">367.7</td><td class="n">63.4%</td><td class="n">84.2%</td><td class="n">3</td><td class="n">4.90M</td></tr>
+<tr><td class="n">3</td><td>Joswin Dsouza</td><td class="n">85.5</td><td class="n">417.7</td><td class="n">61.5%</td><td class="n">81.5%</td><td class="n">3</td><td class="n">4.44M</td></tr>
+<tr><td class="n">4</td><td>Aleksei Bezgin</td><td class="n">118.7</td><td class="n">439.5</td><td class="n">58.1%</td><td class="n">80.1%</td><td class="n">1</td><td class="n">&mdash;</td></tr>
+<tr class="neutral"><td class="n">5</td><td><b>Us (Praveen N. Hegde)</b></td><td class="n"><b>139.8</b></td><td class="n">438.5</td><td class="n">55.4%</td><td class="n">80.2%</td><td class="n">4</td><td class="n">4.72M</td></tr>
+<tr><td class="n">6</td><td>Jasmeet Singh</td><td class="n">188.0</td><td class="n">645.6</td><td class="n">51.0%</td><td class="n">71.3%</td><td class="n">2</td><td class="n">4.71M</td></tr>
+</table>
+<div class="box"><b>What the leaderboard reveals.</b> The <code>&lt;750 km</code> (correct-country) rate
+is <b>~82% for every rank, top to bottom</b> &mdash; nobody, including #1, is meaningfully
+better at country classification, and the means are all ~370&ndash;440 km, so nobody fixes
+the catastrophic tail. The <i>entire</i> ladder from #5 to #1 is the <code>&lt;200 km</code>
+(correct-city) rate: 55% &rarr; 65%. The gap is <b>within-country precision</b> on the ~82%
+of images whose country we already get right.</div>
+
+<h2>3. The model architecture</h2>
+<p>A retrieval-augmented hierarchical classifier, evolved over the project. Current form:</p>
+<ul>
+<li><b>Backbone</b>: ImageNet-pretrained EfficientNet-B0 (<code>efficientnet_b0.ra4_e3600_r224_in1k</code>,
+via <code>timm</code>). ~4.0M of the 5.0M parameter budget. Not frozen (all params counted).</li>
+<li><b>Multi-view input</b>: 5 crops per image (1 global + 4 corner detail crops) through the
+<i>shared</i> backbone, then fused.</li>
+<li><b>Heads</b> on the fused feature: (a) 12-way country classifier; (b) <b>K = 4 independent
+geo-cell classifiers</b> &mdash; four separately-seeded recursive partitions of the training
+points, each cell belonging to exactly one country ("CPlaNet" combinatorial partitioning);
+(c) a within-cell offset regressor; (d) a 224-d L2-normalised embedding.</li>
+<li><b>Inference decode</b>: score <i>every labelled training image</i> by
+<code>log P(country) + mean&#8341; log P(cell&#8342; | country) + w &middot; cosine-similarity(embedding)</code>,
+then output a density-weighted spherical mean over the strongest coherent geographic cluster
+among the top candidates (mode-seeking retrieval).</li>
+<li><b>Training losses</b>: haversine-smoothed cell cross-entropy + country CE + offset Huber
++ a geo-distance-matching loss on the embedding + a 5-view consistency loss + a supervised
+geographic contrastive loss.</li>
+</ul>
+
+<h2>4. Methods tried &mdash; full log</h2>
+<p class="sub">All numbers are the honest fixed-decoder <b>median km on a held-out fold</b>
+(group-stratified 5-fold; 500 m location clusters kept whole so near-duplicates never straddle
+train/val). Fold-0 unless stated.</p>
+
+<h3>4.1 &nbsp;Pre-session baseline (the currently-submitted model)</h3>
+<table>
+<tr><th>Tag</th><th>What</th><th class="n">Median</th><th>Outcome</th></tr>
+<tr><td>T2.1</td><td>Direct (lat,lng) regression, MobileViT-XS, low resolution</td><td class="n">450&ndash;500</td><td>Badly underfit. Regression averages between plausible modes.</td></tr>
+<tr><td>T3.1</td><td>Hierarchical country + single geo-cell classifier, EfficientNet-B0</td><td class="n">193</td><td>Big jump &mdash; classification &gt; regression here.</td></tr>
+<tr><td>T3.4</td><td>K independent coarse cell partitions, combined at decode (CPlaNet)</td><td class="n">183</td><td>K=2 helps; further gains to K=3.</td></tr>
+<tr><td>T4.1b</td><td>Shared-backbone multi-view (global + 4 local) retrieval + mode decode</td><td class="n">155</td><td>Retrieval against the training gallery.</td></tr>
+<tr class="win"><td>T4.1c</td><td>+ supervised geo-contrastive loss on the embedding</td><td class="n">149.5</td><td><b>5-fold CV</b>. The recipe of the submitted model.</td></tr>
+<tr><td>T5.x</td><td>Backbone swaps (FastViT-T8, RepViT, StarNet), 384&nbsp;px fine-tune, per-country loss up-weighting for Sweden/UK/Turkey</td><td class="n">150&ndash;158</td><td>All matched or lost. Documented as negative results.</td></tr>
+<tr class="win"><td>T5.3</td><td>Final model: T4.1c recipe, trained on 100% of the data</td><td class="n">150.6 (CV) &rarr; <b>139.8 (holdout)</b></td><td>The current submission. Holdout ~11&nbsp;km better than CV.</td></tr>
+</table>
+
+<h3>4.2 &nbsp;This session (T6) &mdash; the push toward the leaderboard</h3>
+<table>
+<tr><th>Tag</th><th>Change tested (one variable at a time)</th><th class="n">Median</th><th class="n">&lt;200</th><th class="n">cell&nbsp;acc</th><th>Outcome</th></tr>
+
+<tr><td>E1</td><td>Add the provided <code>orientation_flags.json</code> correction (rotate the ~9% of images flagged upside-down) + K=4 cells, retrain from scratch</td><td class="n">153.6</td><td class="n">.56</td><td class="n">.43</td><td>Neutral on CV (the CV model also learns to handle flipped images). Kept &mdash; near-zero risk, and the flag also covers the holdout where the model can't adapt.</td></tr>
+
+<tr class="fail"><td>E2</td><td>Warm-start E1 + resolution 384 + label smoothing + EMA + region-contrastive (4 changes bundled)</td><td class="n">~170</td><td class="n">&mdash;</td><td class="n">.35&darr;</td><td><b>Failed.</b> Bolting label smoothing onto an already-trained model collapses the cell classifier. Lesson: never bundle; smoothing must be from-scratch.</td></tr>
+
+<tr class="fail"><td>E2b</td><td>Warm-start E1 + resolution 384 <i>only</i></td><td class="n">163&ndash;169</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td><b>Negative.</b> Resolution is not the lever at EfficientNet-B0 scale.</td></tr>
+
+<tr class="neutral"><td>E3c</td><td>Finer cells 96 &rarr; 192 per partition, plain one-hot loss</td><td class="n">~160</td><td class="n">&mdash;</td><td class="n">.34</td><td><b>A wash.</b> Precision gain of smaller cells is exactly cancelled by the accuracy loss (192-way classifier tops out at 34%).</td></tr>
+
+<tr class="win"><td>E3d</td><td>E3c + <b>haversine label smoothing</b> (PIGEON): soft cell target = softmax(&minus;distance/&tau;) over that image's country's cells, &tau;&asymp;65&nbsp;km</td><td class="n"><b>148.5</b></td><td class="n">.57</td><td class="n">.23</td><td><b>First real gain.</b> Neighbouring cells share the label mass &rarr; classifier rewarded for landing in the right <i>area</i>. Cell top-1 drops but the <i>distribution</i> is well-placed.</td></tr>
+
+<tr class="win"><td>E3e</td><td>E3d taken further: <b>368 cells</b> per partition + a shared low-rank trunk before the cell heads (to fit budget) + a 55-epoch schedule + &tau;&asymp;45&nbsp;km</td><td class="n"><b>137.2</b><br>(132.7 swept)</td><td class="n">.59</td><td class="n">.13</td><td><b>Best single model.</b> Decoder sweep (higher retrieval weight, 150&nbsp;km cluster radius) &rarr; 132.7.</td></tr>
+
+<tr><td>E5&nbsp;(f1,f2)</td><td>E3e recipe on CV folds 1 and 2</td><td class="n">135.3 / 138.0</td><td class="n">.57/.58</td><td class="n">.13</td><td>Confirms the recipe generalises &mdash; fold medians 137.2 / 135.3 / 138.0 are near-identical.</td></tr>
+
+<tr class="win"><td>Ens.</td><td>Score-space fusion of 4 diverse models (E3e + a GeoCLIP variant + E3d + E3h)</td><td class="n"><b>122.3</b></td><td class="n">.62</td><td class="n">&mdash;</td><td><b>Best result achieved.</b> Mean drops 428 &rarr; 368: a majority of diverse models rarely all misplace the same image. (Note: the challenge asks for a <i>single</i> model &mdash; see &sect;6.)</td></tr>
+
+<tr class="fail"><td>E3f</td><td>E3e + 2.5&times; country-loss weight + region-level contrastive positives</td><td class="n">worse</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td><b>No-op on country accuracy</b> (0.744, identical to E3e), median regressed. The ~78% country ceiling is a capacity/feature limit, not a loss-weight one.</td></tr>
+
+<tr class="fail"><td>E3g</td><td>E3e + MLP country head + resolution 384</td><td class="n">stalled</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>Country accuracy went <i>backwards</i>. Killed at epoch 8.</td></tr>
+
+<tr class="fail"><td>&mdash;</td><td>Country-gated decode: hard-mask retrieval to the top-k predicted countries; boost the country prior</td><td class="n">no change</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>France stays at 467&nbsp;km even with a top-2 country mask &mdash; when the model is wrong about France it is <i>confidently</i> wrong (France not in its top 2).</td></tr>
+
+<tr class="neutral"><td>E3h</td><td>E3e + tighter local crops (64% &rarr; 40% width)</td><td class="n">~neutral</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>Detail crops slightly more informative, but the 5-view consistency loss doubled and cancelled it.</td></tr>
+
+<tr class="fail"><td>E4</td><td>GeoCLIP-style continuous location encoder (equal-earth + random Fourier features + MLP) sharing the embedding, InfoNCE image&harr;location loss</td><td class="n">worse standalone</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>The auxiliary alignment loss drags the retrieval embedding. Useful only as an ensemble member.</td></tr>
+
+<tr class="fail"><td>&mdash;</td><td>Sharp "nearest-training-image" decode (the spatial-overlap exploit hypothesis)</td><td class="n">worse</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>Analysis showed the holdout's retrieval-similarity distribution is <i>identical</i> to our cluster-separated CV &rarr; <b>the holdout is genuinely spatially separated</b>, there is no near-duplicate exploit, and CV is a faithful proxy for the holdout.</td></tr>
+
+<tr class="fail"><td>&mdash;</td><td>Within-cell offset regression + confidence-adaptive decode (OSV-5M hybrid)</td><td class="n">no gain</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>The Huber offset head learned nothing (cell+offset 172 vs centroid 169). Mode-retrieval beats cell-centroid at <i>every</i> confidence level. The decode is not the bottleneck.</td></tr>
+
+<tr><td>E7</td><td><b>k-means cells</b> instead of kd-tree (per-country MiniBatchKMeans; compact blobs, not axis-aligned strips)</td><td class="n">running</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>Oracle ceiling 33 &rarr; <b>25&nbsp;km</b> at the same cell count. In progress.</td></tr>
+
+<tr><td>E8</td><td>k-means cells + <b>country &rarr; region &rarr; cell hierarchy head</b> (nested easy decisions)</td><td class="n">queued</td><td class="n">&mdash;</td><td class="n">&mdash;</td><td>Wired &amp; tested (+62k params, fits). In queue after E7.</td></tr>
+</table>
+
+<h2>5. Diagnosis &mdash; what is limiting us</h2>
+
+<h3>5.1 &nbsp;The gap is within-country precision, not country classification</h3>
+<p>Per-country median error of the best (122&nbsp;km) ensemble, fold 0:</p>
+<table>
+<tr><th>Country</th><th class="n">n</th><th class="n">median km</th><th>&nbsp;</th><th>Country</th><th class="n">n</th><th class="n">median km</th></tr>
+<tr><td>Iceland</td><td class="n">192</td><td class="n">59</td><td></td><td>United Kingdom</td><td class="n">200</td><td class="n">117</td></tr>
+<tr><td>Finland</td><td class="n">200</td><td class="n">74</td><td></td><td>Poland</td><td class="n">187</td><td class="n">206</td></tr>
+<tr><td>Belarus</td><td class="n">173</td><td class="n">79</td><td></td><td>Spain</td><td class="n">200</td><td class="n">216</td></tr>
+<tr><td>Norway</td><td class="n">200</td><td class="n">86</td><td></td><td>Germany</td><td class="n">200</td><td class="n">243</td></tr>
+<tr><td>Turkey</td><td class="n">200</td><td class="n">99</td><td></td><td>Italy</td><td class="n">200</td><td class="n">258</td></tr>
+<tr><td>Sweden</td><td class="n">200</td><td class="n">103</td><td></td><td><b>France</b></td><td class="n">200</td><td class="n"><b>373</b></td></tr>
+</table>
+<p>The overall median sits <b>exactly at the boundary</b> between the 7 "easy" countries
+(all &lt; 120&nbsp;km) and the 5 "hard" continental ones. Crucially, for the easy countries
+the model already <i>beats</i> the "know the country perfectly" oracle (e.g. Iceland 59&nbsp;km
+vs a 178&nbsp;km country-centroid oracle) &mdash; the cell system works well when the country
+is right. For France the model is <i>worse</i> than the country-centroid oracle (373 vs 330):
+it is predicting the wrong country outright (~42% of French images land &gt; 500&nbsp;km,
+mostly labelled Germany/Italy/Poland).</p>
+
+<h3>5.2 &nbsp;The cell classifier collapses at fine granularity</h3>
+<table>
+<tr><th class="n">cells / partition</th><th class="n">oracle median (K=4, perfect classification)</th><th class="n">actual cell top-1 accuracy</th></tr>
+<tr><td class="n">96</td><td class="n">84.5 km</td><td class="n">43%</td></tr>
+<tr><td class="n">192</td><td class="n">54.1 km</td><td class="n">34%</td></tr>
+<tr><td class="n">368</td><td class="n">33.1 km</td><td class="n">13%</td></tr>
+</table>
+<p>Every time we halve the cell, the <i>best possible</i> result improves, but the classifier
+gets the cell right far less often (fewer training images per class, a harder problem). The
+haversine label smoothing recovers most of the <i>median</i> (because the soft distribution is
+still roughly in the right place) but not the top-1 accuracy &mdash; so <b>few predictions land
+inside a tight cell, hence few <code>&lt;200 km</code> hits.</b> This is the mechanism behind
+our 59% vs #1's 65%.</p>
+
+<h3>5.3 &nbsp;The hard core: featureless rural continental Europe</h3>
+<p>The error mass is ~500 validation images where the cell classifier has almost no
+confidence (top probability ~15%). These are generic rural roads in France / Germany / Poland
+where a single street-level frame genuinely looks the same across borders. For these images
+only the embedding provides signal, and the geo-distance / contrastive losses have little to
+grab onto in a featureless scene. This is a shared ceiling &mdash; the whole leaderboard is at
+~82% correct-country &mdash; but #1 clearly extracts <i>some</i> extra signal (road markings,
+utility poles, vegetation, sky/light) that our model at 288&nbsp;px is not learning.</p>
+
+<h3>5.4 &nbsp;The 5,000,000-parameter budget</h3>
+<p>EfficientNet-B0's trunk alone is ~4.0M, leaving only ~1M for all the classification heads
+&mdash; and classification capacity is exactly the bottleneck. A smaller backbone with much
+larger heads (or a genuinely stronger sub-5M feature extractor) is an open, higher-risk lever.</p>
+
+<h2>6. Constraints and lessons</h2>
+<ul>
+<li><b>Single model required.</b> The clarifications say "submit a single final model", and
+every leaderboard entry is one model &le; 5M params. Our best result (122&nbsp;km) is a
+4-model ensemble, likely non-compliant. Mitigation in progress: a <i>model soup</i>
+(weight-average of same-architecture seeds) &mdash; one model, ensemble-like robustness.</li>
+<li><b>The holdout is spatially separated</b> from training (verified via retrieval-similarity
+distributions). No nearest-neighbour shortcut. CV is a faithful proxy.</li>
+<li><b>Cross-validation is trustworthy</b>: fold medians 137.2 / 135.3 / 138.0 for the same
+recipe; old submission CV 150.6 &rarr; holdout 139.8.</li>
+<li><b>Process lessons</b>: never bundle &gt;1 change per screen; label smoothing must be
+trained from scratch (not fine-tuned in); EMA decay &ge; 0.999 makes early evaluations
+meaningless; the smoothing temperature &tau; must be scaled to the inter-cell spacing.</li>
+</ul>
+
+<h2>7. Current plan to close the gap</h2>
+<p>Three compounding levers, all aimed at <b>cell accuracy at fine granularity</b> (the &sect;5.2 problem):</p>
+<ol>
+<li><b>Coherent k-means cells</b> (E7, running) &mdash; compact blobs classify better than
+kd-tree strips; oracle 33 &rarr; 25&nbsp;km.</li>
+<li><b>Nested country &rarr; region &rarr; cell hierarchy</b> (E8, queued) &mdash; three easy
+decisions instead of one impossible 1-of-368; a wrong cell still lands in the right region.</li>
+<li><b>Test-time augmentation</b> (flip + multi-scale + native-resolution corner crops) and a
+longer / EMA-tuned schedule &mdash; reliable few-km gains, cheap.</li>
+</ol>
+<p>Realistic projection: 122 &rarr; ~95&ndash;105&nbsp;km (roughly rank #3). Reaching #1's
+47&nbsp;km likely also needs semantic cells and a training regime found through many
+submission iterations, and possibly a different backbone.</p>
+
+<div class="box">
+<b>Immediate action available:</b> upload
+<code>submission_candidates/preds_kdtree_fulldata_mode.csv</code> &mdash; the best current
+single model, trained on 100% of the data, mode decode + horizontal-flip TTA. Expected
+holdout ≈ 125&ndash;130&nbsp;km, moving us from rank #5 to #4 while the E7/E8 work continues.
+</div>
+
+<p class="foot">Report reflects state at 2026-08-29 20:45. Experiment logs, per-experiment
+READMEs (including every failed run) and the full cell-accuracy oracle analysis are in
+<code>outputs/experiments/</code>, <code>failed_experiments/</code> and
+<code>T6_FINDINGS.md</code> in the repository.</p>
+
+</body>
+</html>

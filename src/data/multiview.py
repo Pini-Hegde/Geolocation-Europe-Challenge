@@ -27,24 +27,36 @@ class GlobalLocalTransform:
         crop_pct: float,
         train: bool,
         local_fraction: float = 0.64,
+        strong_aug: bool = False,
     ) -> None:
         self.input_size = input_size
         self.train = train
         self.local_fraction = local_fraction
         normalize = transforms.Normalize(mean=mean, std=std)
         if train:
-            self.global_transform = transforms.Compose([
+            # T6/R9 (Further_Analysis §4.2): 11k images, model converges by ep31 with the light
+            # aug below -> under-regularised. strong_aug widens the RandomResizedCrop scale and
+            # adds TrivialAugmentWide (parameter-free, no horizontal flip -> keeps the
+            # driving-side / signage / text geoloc cues intact).
+            global_ops = [
                 transforms.RandomResizedCrop(
-                    input_size, scale=(0.65, 1.0), ratio=(0.85, 1.15),
+                    input_size, scale=(0.3, 1.0) if strong_aug else (0.65, 1.0),
+                    ratio=(0.85, 1.15),
                     interpolation=transforms.InterpolationMode.BICUBIC,
                 ),
+            ]
+            if strong_aug:
+                global_ops.append(transforms.TrivialAugmentWide(
+                    interpolation=transforms.InterpolationMode.BILINEAR))
+            global_ops += [
                 transforms.ColorJitter(0.2, 0.2, 0.2, 0.02),
                 transforms.RandomRotation(
                     5, interpolation=transforms.InterpolationMode.BILINEAR
                 ),
                 transforms.ToTensor(), normalize,
                 transforms.RandomErasing(p=0.1, scale=(0.02, 0.08)),
-            ])
+            ]
+            self.global_transform = transforms.Compose(global_ops)
             self.local_transform = transforms.Compose([
                 transforms.Resize(
                     (input_size, input_size),
