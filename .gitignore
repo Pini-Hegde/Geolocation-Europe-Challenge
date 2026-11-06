@@ -10,3 +10,9 @@ __pycache__/
 slurm_logs/*.out
 slurm_logs/*.err
 
+
+# experiment checkpoints / embeddings (only the submitted model is shipped)
+*.pt
+!model/**/*.pt
+*.npz
+slurm_logs/
