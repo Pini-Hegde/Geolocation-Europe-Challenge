@@ -138,6 +138,13 @@ def _device():
     return "cuda" if torch.cuda.is_available() else "cpu"
 
 
+def require_cuda(script):
+    """Training and embedding use CUDA autocast; fail early with a clear message."""
+    if not torch.cuda.is_available():
+        raise SystemExit(f"{script} needs a CUDA GPU (the decoder in predict.py/eval.py "
+                         "runs on CPU, but train.py and embed.py do not).")
+
+
 def l2norm(X, axis=1):
     return X / np.maximum(np.linalg.norm(X, axis=axis, keepdims=True), 1e-8)
 
@@ -164,12 +171,12 @@ def apply_whitening(X, mu, Wm):
 def csls_hubness(G, k=10):
     """Mean similarity from each gallery point to its k nearest gallery neighbours.
 
-    subtract this from the query-gallery score and you get CSLS (Conneau et al., 2018), taken from here Bilingual lexicon induction.
-    It aims to reduce hubness, whereby images from the gallery that end up nearest to every query we issue are retrieved for queries that are largely unrelated.
+    Subtracting this from the query-gallery score gives CSLS (Conneau et al., 2018, from
+    bilingual lexicon induction). It penalises "hubs": gallery images that sit close to
+    everything and keep being retrieved for unrelated queries.
 
-    Note that this is only calculated between galleries only. By doing so it is inductive (you only compute once for forever without seeing any gallery images
-    paired with query images again during index search, so the images themselves can "vote" on "hubness") and performed best, as opposed to the
-    transductive version (calculating based upon query batches).
+    Computed gallery-to-gallery only, so it is inductive: fitted once, independent of the
+    queries. The transductive variant (hub stats from the query batch) scored worse.
     """
     Gt = torch.from_numpy(G).to(_device())
     S = Gt @ Gt.T
@@ -193,10 +200,10 @@ def chamfer_rerank(qtok, gtok, idx, sim, lam=3.0, chunk=8):
         cham(q,g) = 0.5 * ( mean_i max_j <q_i,g_j> + mean_j max_i <q_i,g_j> )
         score     = global_similarity + lam * cham(q,g)
 
-    The global descriptor smushes the entire feature map into a single vector and so two images 
-    may be near each other without relating in any particular way. Token sets ask a stronger question. 
-
-    Is some patch of this image another patch from that one? That distinguishes "another road in the same country" from "the same street".
+    The global descriptor pools the whole feature map into one vector, so two images can be
+    close in it while agreeing on nothing in particular. Token sets ask a stricter question:
+    does some patch of this image match some patch of that one? That separates "another
+    road in the same country" from "the same street".
 
     qtok (nq, L, d), gtok (ng, L, d), per-token L2-normalised. idx (nq, K) is the shortlist,
     sim (nq, K) its global scores. Returns both re-sorted.
@@ -208,8 +215,8 @@ def chamfer_rerank(qtok, gtok, idx, sim, lam=3.0, chunk=8):
     cham = torch.empty(idx.shape, dtype=torch.float32, device=dev)
     for s in range(0, len(idx), chunk):
         e = min(s + chunk, len(idx))
-        q = qt[s:e].float()                            
-        c = gt[ii[s:e]].float()                        
+        q = qt[s:e].float()                              # (b, L, d)
+        c = gt[ii[s:e]].float()                          # (b, K, L, d)
         m = torch.einsum("bld,bkmd->bklm", q, c)
         cham[s:e] = 0.5 * (m.max(3).values.mean(2) + m.max(2).values.mean(2))
     score = sim + lam * cham.cpu().numpy()
@@ -221,9 +228,9 @@ def local_mode_decode(sim, idx, lat, lng, radius_km=60.0, temp=0.1):
     """Similarity-weighted spherical mean, but only over neighbours within radius_km of the
     top-1.
 
-    The radius is everything. Average over the stuff we find and there is one solid neighbor
-    at the correct street that is overruled by one statistically insignificant point further 
-    down the country so the actual answer is lying in some field between the two of us.
+    The radius is what makes this a local mode rather than a global mean. Without it, one
+    confident neighbour on the right street gets pulled towards a weak match elsewhere in
+    the country, and the prediction lands in a field halfway between the two.
     """
     gl, gn = lat[idx], lng[idx]
     d1 = haversine_km(gl[:, :1], gn[:, :1], gl, gn)

@@ -13,6 +13,6 @@ slurm_logs/*.err
 
 # experiment checkpoints / embeddings (only the submitted model is shipped)
 *.pt
-!model/**/*.pt
+!model/full_data/final.pt
 *.npz
 slurm_logs/

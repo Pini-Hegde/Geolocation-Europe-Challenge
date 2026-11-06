@@ -6,12 +6,12 @@ The loss. Take a batch of B images, compute every pairwise great-circle distance
     P = softmax_j( (e_i . e_j) / temp )    temp   = 0.07  (what the embedding says)
     loss = KL(Q || P)                      diagonal masked out of both
 
-Each picture of the batch would then be a positive, weighted according to how close to the ground truth it is. 
-If there is a "hard" positive/negative split at a certain, constant radius, that gradient is lost.
+Every image in the batch is a positive, weighted by how close it really is. A hard
+positive/negative split at a fixed radius throws that graded signal away.
 
-When changing a value in here, have it update tau_km. An old version used 250 km, 
-when the target couldn't distinguish 1 km from 40 km, and so the embedding, naturally, 
-learned which of the regions the photo was extracted from, but not place at all. That's the only constant used. It separates 126 km of plateau from the rest.
+tau_km is the one constant that matters. An earlier version used 250 km: the target could
+not tell 1 km from 40 km, so the embedding learned *which region* a photo came from, not
+*which place*. Dropping to 15 km is the difference between a 126 km plateau and 34 km.
 
 The sampler. Only about a quarter of the images have any partner within 500 m, so a random
 batch usually contains no positive pair at all and the loss goes nowhere. Batches are built
@@ -85,6 +85,7 @@ def main():
     p.add_argument("--workers", type=int, default=8)
     p.add_argument("--seed", type=int, default=0)
     a = p.parse_args()
+    geo.require_cuda("train.py")
     os.makedirs(a.out, exist_ok=True)
     torch.manual_seed(a.seed)
     np.random.seed(a.seed)
@@ -169,8 +170,8 @@ def main():
         # model selection on the val split, and the reported number stops being honest.
         torch.save(net.state_dict(), os.path.join(a.out, "final.pt"))
 
-    json.dump({"args": vars(a), "params": n_params, "history": history},
-              open(os.path.join(a.out, "config.json"), "w"), indent=2)
+    with open(os.path.join(a.out, "config.json"), "w") as f:
+        json.dump({"args": vars(a), "params": n_params, "history": history}, f, indent=2)
     print(f"done: {a.out}, {n_params} params", flush=True)
 
 

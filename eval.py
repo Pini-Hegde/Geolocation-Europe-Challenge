@@ -1,12 +1,11 @@
 """Scores the pipeline on the held-out 20%.
 
-Pass this the same seed trained with --val-frac 0.2 or your split gets re-built differently
- and you end up scoring test set pictures. Your gallery is the other 80% on which whitening and hubness were learned entirely.
+Use the same --seed and --val-frac as `train.py --val-frac 0.2`, otherwise the split is
+rebuilt differently and you score images the model trained on. The gallery is the other
+80%; whitening and hubness are fitted on it alone.
 
-Prints out the full ablation ladder, rather than a single number, so every stage has to prove its merit rather than claim it in the write-up.
-
-There is no hyper-parameter search anywhere in this script, for clarity and to avoid its influence being claimed instead 
-of the model's; everything below this line is what I considered a default setting.
+Prints the full ablation ladder rather than one number, so every decode stage has to show
+its gain. No hyper-parameter search happens here; the defaults are the frozen values.
 """
 import argparse
 import numpy as np

@@ -6,11 +6,11 @@
     decode      similarity-weighted spherical mean of whatever survives within RADIUS km
                 of the new top-1
 
-The entirety of what is tuned by the pipeline, whitening included or hubsness as it applies, 
-all comes off of only the gallery and never anything but the gallery. 
-Each holdout does not affect the others, which is the correct (not secretly transductive) course of action.
+Whitening and hubness statistics are fitted on the gallery only, and every query is
+decoded independently of every other query (no transductive tricks).
 
-The decoding hyperparameters can be seen below are all locked as they were learned on validation and not touched since. They're included in README.md.
+The decode hyper-parameters below were fixed on the validation split and are shared with
+eval.py. Runs on CPU if no GPU is available.
 """
 import argparse
 import numpy as np

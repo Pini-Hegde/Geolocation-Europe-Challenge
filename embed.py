@@ -1,15 +1,13 @@
 """Descriptor extraction, with multi-scale test-time augmentation.
 
-The same network is run at 448, 512, and 576 and the descriptors averaged. The descriptors are also normalized 
-by dividing through by the L2 norm. The network uses the same weights for all these images, thus there are no added 
-parameters here. 
+The same network runs at 448, 512 and 576 px; the three descriptors are averaged and
+re-normalised. Same weights at every scale, so no extra parameters. Training is at 448;
+larger inputs give GeM a finer spatial grid to pool over.
 
-We train at 448, and when the larger inputs are fed in the same network allows GeM to average on a 
-higher quality spatial grid, producing finer grained detail the descriptor is trained on.
+The 448 px pass also stores the per-token descriptors used by chamfer re-ranking in
+predict.py and eval.py.
 
-For the respective worth of the decode stage see the ablation ladder in the README.md (the measured numbers are reported there).
-
-The 448 px pass also writes the token-based descriptors, which is needed for chamfer re-ranking in predict.py and eval.py.
+Output .npz: names, emb448, emb512, emb576 (float16), tokens (N x 196 x 192, float16).
 """
 import os
 import argparse
@@ -77,6 +75,7 @@ def main():
     p.add_argument("--bs", type=int, default=48)
     p.add_argument("--workers", type=int, default=8)
     a = p.parse_args()
+    geo.require_cuda("embed.py")
 
     names, paths = image_list(a.data, a.split)
     net = geo.GeoNet(a.backbone, a.dim, pretrained=False).cuda()
