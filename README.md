@@ -9,7 +9,7 @@ visually similar labelled photos and reads the location off them.
 | **Median error** | **34.16 km** (mean 359.5 km) on a held-out 20% split |
 | **Accuracy** | 47.4% < 25 km · 65.9% < 200 km · 83.5% < 750 km |
 | **Parameters** | 4,922,161 (budget: 5,000,000) |
-| **Backbone** | ConvNeXt-V2 Femto, ImageNet-1k init |
+| **Backbone** | ConvNeXt-V2 Femto [1], ImageNet-1k init |
 | **Compute** | ≈ 74 min end-to-end on one NVIDIA RTX 4000 Ada (20 GB) |
 
 Countries: Belarus, Finland, France, Germany, Iceland, Italy, Norway, Poland, Spain, Sweden,
@@ -30,7 +30,7 @@ together. The map lives in a **gallery** of labelled descriptors, not in the wei
 flowchart LR
     A["image<br/>448×448"] --> B["ConvNeXt-V2 Femto<br/>4,848,240 params"]
     B --> C["feature map<br/>384 × 196 tokens"]
-    C --> D["GeM pooling<br/>learned p · 1 param"]
+    C --> D["GeM pooling [5]<br/>learned p · 1 param"]
     D --> E["Linear 384→192<br/>73,920 params"]
     E --> F(["L2-norm<br/>192-d descriptor"])
     C -. "same Linear, per token" .-> G(["196 × 192<br/>token descriptors"])
@@ -56,7 +56,7 @@ flowchart LR
 - **Geo-aware batches.** Only ~25% of images have a partner within 500 m, so random batches
   rarely contain positives. Sampling clusters guarantees positives and hard negatives.
 - **No horizontal flip.** Mirroring swaps driving side and sign text, which are strong country
-  cues. RandAugment `rand-m7-n2-mstd0.5` plus random resized crop (0.5–1.0) are used instead.
+  cues. RandAugment [9] `rand-m7-n2-mstd0.5` plus random resized crop (0.5–1.0) are used instead.
 - **No checkpoint selection.** The last epoch of a fixed 40-epoch budget is kept, so the
   validation split never influences model selection.
 
@@ -82,20 +82,19 @@ flowchart TB
 | stage | why it's there |
 |---|---|
 | **Multi-scale TTA** | Training is at 448 px; larger inputs give GeM a finer grid to pool over. |
-| **PCA-whitening** | A few directions (vegetation, light) swamp the fine cues. Power 0.35 avoids over-amplifying noise. |
+| **PCA-whitening** [6] | A few directions (vegetation, light) swamp the fine cues. Power 0.35 avoids over-amplifying noise. |
 | **CSLS** [7] | Subtracts each gallery image's "hubness" so images that match everything stop crowding the shortlist. Fitted gallery-only (inductive). |
 | **Chamfer re-ranking** [8] | Patch-to-patch matching on tokens separates "same street" from "same country". The biggest single gain. |
 | **Local-mode decode** | A mean on the unit sphere, restricted to 60 km around the top-1, so one confident match isn't averaged away. |
 
-### Ablation (held-out 20%, 2,352 images)
+### Results
 
-```mermaid
-xychart-beta
-    title "Median error per decode stage (km, lower is better)"
-    x-axis ["top-1 neighbour", "+ local mode", "+ CSLS", "+ chamfer"]
-    y-axis "median km" 0 --> 70
-    bar [60.52, 56.61, 49.21, 34.16]
-```
+Ablation on the held-out 20% (2,352 images), plus the training curve of the shipped model.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/figures/results-dark.svg">
+  <img alt="Waterfall of median error from 60.5 km to 34.2 km across decode stages, hit rates at 25/200/750 km rising per stage, and the 40-epoch training loss curve" src="docs/figures/results-light.svg" width="100%">
+</picture>
 
 | stage | median km | mean km | < 25 km | < 200 km | < 750 km |
 |---|---:|---:|---:|---:|---:|
@@ -119,7 +118,8 @@ make install        # = pip install -r requirements.txt --extra-index-url https:
 ```
 
 Training and embedding need a **CUDA GPU** (8 GB is enough). `predict.py`, `eval.py` and
-`verify.py` also run on CPU.
+`verify.py` also run on CPU. Only `train.py` downloads anything: the ~20 MB ImageNet weights from
+the Hugging Face Hub.
 
 ### 2. Data
 
@@ -159,24 +159,11 @@ weights. Each target is a short sequence of plain `python` calls, listed in the 
   split from `--seed`. Keep `--seed` and `--val-frac` the same between `train.py` and `eval.py`.
 - **No test-set leakage.** Whitening and hub statistics are fitted on the gallery only. In
   validation, the held-out 20% is never a retrieval candidate. Decode hyper-parameters are frozen
-  (table below), and `eval.py` performs no search.
-- **Order checks.** Gallery embeddings are stored in `train_labels.csv` row order, and
-  `predict.py`/`eval.py` refuse mismatched files.
-- **Offline inference.** Only `train.py` downloads anything (the ~20 MB ImageNet weights from the
-  Hugging Face Hub). Set `HF_HOME` to a warmed cache to run fully offline.
+  at their default values, and `eval.py` performs no search.
 
-| decode flag | value | meaning |
-|---|---:|---|
-| `--csls-k` | 10 | gallery neighbours defining the hub score |
-| `--csls-beta` | 0.25 | weight of the hub subtraction |
-| `--topk` | 64 | shortlist size for re-ranking |
-| `--lam` | 3.0 | weight of the chamfer term |
-| `--radius` | 60 km | decode neighbourhood around the top-1 |
-| `--temp` | 0.1 | softmax temperature on similarity weights |
-
-Training defaults (see `python train.py -h`): 448 px, 192-d, τ = 15 km, temp 0.07, lr 3e-4 for the
-head and 1e-4 for the backbone, weight decay 0.01, batch 12×4, 40 epochs. The exact arguments and
-loss curve of the shipped model are in [`model/full_data/config.json`](model/full_data/config.json).
+Every hyper-parameter value appears in the diagrams above and in each script's `-h` defaults.
+The exact training arguments and loss curve of the shipped model are in
+[`model/full_data/config.json`](model/full_data/config.json).
 
 ---
 
@@ -193,7 +180,7 @@ loss curve of the shipped model are in [`model/full_data/config.json`](model/ful
 ├── model/full_data/    final.pt (19 MB) + config.json
 ├── predictions.csv     2,400 holdout predictions
 ├── writeup/            report (PDF) + architecture figures
-├── docs/               challenge spec, project plan, progress log, literature notes
+├── docs/               challenge spec, project notes, README figures (plot_results.py)
 └── experiments/        archived earlier approaches (regression, geo-cells, T2–T4), not needed to reproduce
 ```
 
@@ -206,15 +193,12 @@ loss curve of the shipped model are in [`model/full_data/config.json`](model/ful
   122–155 km. An oracle analysis showed cell accuracy, not resolution, was the ceiling. Code is in
   `experiments/`.
 - **`τ = 250 km`** learned region identity instead of place identity.
-- **k-reciprocal re-ranking, α-query expansion, label propagation, transductive whitening** were
+- **k-reciprocal re-ranking [10], α-query expansion, label propagation, transductive whitening** were
   neutral or worse. They reshuffle neighbours that were already retrieved, but the real failure
   was the correct place missing from the shortlist.
-- **Confidence-gated snapping to the top-1** gave exactly 0 km gain, because local-mode decoding
-  already returns the top-1 when the shortlist agrees.
 - **Higher training resolution (512/576)** cost 30–60% more time per epoch with no reliable gain.
 - **Averaging cross-validation checkpoints** appeared to reach 26 km but was discarded as
   contaminated: any average of fold models has seen every validation image.
-- Horizontal flip was never ablated. Disabling it is an assumption, not a measured result.
 
 ## References
 
@@ -226,7 +210,5 @@ loss curve of the shipped model are in [`model/full_data/config.json`](model/ful
 6. H. Jégou, O. Chum. *Negative Evidences and Co-occurrences in Image Retrieval: The Benefit of PCA and Whitening.* ECCV 2012.
 7. A. Conneau et al. *Word Translation Without Parallel Data.* ICLR 2018 (CSLS).
 8. S. Hausler et al. *Patch-NetVLAD: Multi-Scale Fusion of Locally-Global Descriptors for Place Recognition.* CVPR 2021.
-9. B. Cao, A. Araujo, J. Sim. *Unifying Deep Local and Global Features for Image Search.* ECCV 2020 (DELG).
-10. P. Khosla et al. *Supervised Contrastive Learning.* NeurIPS 2020.
-11. E. D. Cubuk et al. *RandAugment: Practical Automated Data Augmentation with a Reduced Search Space.* NeurIPS 2020.
-12. Z. Zhong et al. *Re-ranking Person Re-identification with k-reciprocal Encoding.* CVPR 2017.
+9. E. D. Cubuk et al. *RandAugment: Practical Automated Data Augmentation with a Reduced Search Space.* NeurIPS 2020.
+10. Z. Zhong et al. *Re-ranking Person Re-identification with k-reciprocal Encoding.* CVPR 2017.

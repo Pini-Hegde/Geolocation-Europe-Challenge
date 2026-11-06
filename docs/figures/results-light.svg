@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="640" viewBox="0 0 960 640" font-family='system-ui, -apple-system, "Segoe UI", Helvetica, Arial, sans-serif' role="img" aria-labelledby="t">
+<title id="t">Ablation: median error falls from 60.5 km to 34.2 km across decode stages; hit rates rise at every threshold; training loss decreases over 40 epochs.</title>
+<defs><linearGradient id="area" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stop-color="#2a78d6" stop-opacity="0.30"/><stop offset="1" stop-color="#2a78d6" stop-opacity="0.02"/></linearGradient></defs>
+<rect width="960" height="640" rx="12" fill="#fcfcfb"/>
+<text x="28.0" y="40.0" font-size="15" font-weight="600" fill="#0b0b0b" text-anchor="start">Where the error goes</text>
+<text x="28.0" y="59.0" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">median km on held-out 20% · lower is better</text>
+<line x1="64" x2="460" y1="326.0" y2="326.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="56.0" y="330.0" font-size="11" font-weight="400" fill="#898781" text-anchor="end">0</text>
+<line x1="64" x2="460" y1="259.7" y2="259.7" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="263.7" font-size="11" font-weight="400" fill="#898781" text-anchor="end">20</text>
+<line x1="64" x2="460" y1="193.4" y2="193.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="197.4" font-size="11" font-weight="400" fill="#898781" text-anchor="end">40</text>
+<line x1="64" x2="460" y1="127.1" y2="127.1" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="131.1" font-size="11" font-weight="400" fill="#898781" text-anchor="end">60</text>
+<path d="M80.6,326.0 V129.4 Q80.6,125.4 84.6,125.4 H122.6 Q126.6,125.4 126.6,129.4 V326.0 Z" fill="#898781"/>
+<text x="103.6" y="117.4" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">60.5</text>
+<line x1="126.6" x2="159.8" y1="125.4" y2="125.4" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<rect x="159.8" y="125.4" width="45.9" height="13.0" rx="4" fill="#eb6834"/>
+<text x="182.8" y="117.4" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">−3.9</text>
+<line x1="205.8" x2="239.0" y1="138.4" y2="138.4" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<rect x="239.0" y="138.4" width="45.9" height="24.5" rx="4" fill="#1baf7a"/>
+<text x="262.0" y="130.4" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">−7.4</text>
+<line x1="285.0" x2="318.2" y1="162.9" y2="162.9" stroke="#898781" stroke-width="1" stroke-dasharray="3 3"/>
+<rect x="318.2" y="162.9" width="45.9" height="49.9" rx="4" fill="#eda100"/>
+<text x="341.2" y="154.9" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="middle">−15.1</text>
+<line x1="364.2" x2="397.4" y1="212.8" y2="212.8" stroke="#898781" stroke-dasharray="3 3"/>
+<path d="M397.4,326.0 V216.8 Q397.4,212.8 401.4,212.8 H439.4 Q443.4,212.8 443.4,216.8 V326.0 Z" fill="#2a78d6"/>
+<text x="420.4" y="204.8" font-size="13" font-weight="700" fill="#0b0b0b" text-anchor="middle">34.2 km</text>
+<text x="103.6" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">top-1</text>
+<text x="182.8" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ local mode</text>
+<text x="262.0" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ CSLS</text>
+<text x="341.2" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ chamfer</text>
+<text x="420.4" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">final</text>
+<text x="500.0" y="40.0" font-size="15" font-weight="600" fill="#0b0b0b" text-anchor="start">Hit rate within distance</text>
+<text x="500.0" y="59.0" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">% of held-out photos · higher is better</text>
+<rect x="500" y="76" width="14" height="4" rx="2" fill="#0d366b"/>
+<text x="520.0" y="82.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="start">&lt; 25 km</text>
+<rect x="584" y="76" width="14" height="4" rx="2" fill="#2a78d6"/>
+<text x="604.0" y="82.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="start">&lt; 200 km</text>
+<rect x="668" y="76" width="14" height="4" rx="2" fill="#86b6ef"/>
+<text x="688.0" y="82.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="start">&lt; 750 km</text>
+<line x1="536" x2="824" y1="306.9" y2="306.9" stroke="#e1e0d9" stroke-width="1"/>
+<text x="528.0" y="310.9" font-size="11" font-weight="400" fill="#898781" text-anchor="end">40%</text>
+<line x1="536" x2="824" y1="230.5" y2="230.5" stroke="#e1e0d9" stroke-width="1"/>
+<text x="528.0" y="234.5" font-size="11" font-weight="400" fill="#898781" text-anchor="end">60%</text>
+<line x1="536" x2="824" y1="154.2" y2="154.2" stroke="#e1e0d9" stroke-width="1"/>
+<text x="528.0" y="158.2" font-size="11" font-weight="400" fill="#898781" text-anchor="end">80%</text>
+<polyline points="550.0,299.3 636.7,298.1 723.3,294.3 810.0,278.7" fill="none" stroke="#0d366b" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="550.0" cy="299.3" r="4.5" fill="#0d366b" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="636.7" cy="298.1" r="4.5" fill="#0d366b" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="723.3" cy="294.3" r="4.5" fill="#0d366b" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="810.0" cy="278.7" r="4.5" fill="#0d366b" stroke="#fcfcfb" stroke-width="2"/>
+<text x="822.0" y="282.7" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">47.4%</text>
+<text x="864.0" y="282.7" font-size="11" font-weight="400" fill="#52514e" text-anchor="start">&lt; 25 km</text>
+<polyline points="550.0,220.2 636.7,220.2 723.3,217.2 810.0,208.0" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="550.0" cy="220.2" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="636.7" cy="220.2" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="723.3" cy="217.2" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="810.0" cy="208.0" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="822.0" y="212.0" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">65.9%</text>
+<text x="864.0" y="212.0" font-size="11" font-weight="400" fill="#52514e" text-anchor="start">&lt; 200 km</text>
+<polyline points="550.0,151.5 636.7,151.1 723.3,149.2 810.0,140.8" fill="none" stroke="#86b6ef" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+<circle cx="550.0" cy="151.5" r="4.5" fill="#86b6ef" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="636.7" cy="151.1" r="4.5" fill="#86b6ef" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="723.3" cy="149.2" r="4.5" fill="#86b6ef" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="810.0" cy="140.8" r="4.5" fill="#86b6ef" stroke="#fcfcfb" stroke-width="2"/>
+<text x="822.0" y="144.8" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">83.5%</text>
+<text x="864.0" y="144.8" font-size="11" font-weight="400" fill="#52514e" text-anchor="start">&lt; 750 km</text>
+<text x="550.0" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">top-1</text>
+<text x="636.7" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ local mode</text>
+<text x="723.3" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ CSLS</text>
+<text x="810.0" y="346.0" font-size="11.5" font-weight="400" fill="#52514e" text-anchor="middle">+ chamfer</text>
+<text x="28.0" y="408.0" font-size="15" font-weight="600" fill="#0b0b0b" text-anchor="start">Training loss of the shipped model</text>
+<text x="28.0" y="427.0" font-size="12" font-weight="400" fill="#52514e" text-anchor="start">KL(Q ‖ P) per epoch · 40 epochs on all 11,758 images</text>
+<line x1="64" x2="876" y1="586.0" y2="586.0" stroke="#c3c2b7" stroke-width="1"/>
+<text x="56.0" y="590.0" font-size="11" font-weight="400" fill="#898781" text-anchor="end">1.0</text>
+<line x1="64" x2="876" y1="559.6" y2="559.6" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="563.6" font-size="11" font-weight="400" fill="#898781" text-anchor="end">1.5</text>
+<line x1="64" x2="876" y1="533.2" y2="533.2" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="537.2" font-size="11" font-weight="400" fill="#898781" text-anchor="end">2.0</text>
+<line x1="64" x2="876" y1="506.8" y2="506.8" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="510.8" font-size="11" font-weight="400" fill="#898781" text-anchor="end">2.5</text>
+<line x1="64" x2="876" y1="480.4" y2="480.4" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="484.4" font-size="11" font-weight="400" fill="#898781" text-anchor="end">3.0</text>
+<line x1="64" x2="876" y1="454.0" y2="454.0" stroke="#e1e0d9" stroke-width="1"/>
+<text x="56.0" y="458.0" font-size="11" font-weight="400" fill="#898781" text-anchor="end">3.5</text>
+<polygon points="64.0,586.0 64.0,468.1 84.8,489.8 105.6,497.2 126.5,502.5 147.3,506.2 168.1,510.8 188.9,513.8 209.7,518.2 230.6,522.8 251.4,525.3 272.2,529.5 293.0,529.4 313.8,532.1 334.7,535.3 355.5,538.9 376.3,541.4 397.1,542.9 417.9,545.3 438.8,546.6 459.6,548.6 480.4,550.9 501.2,550.6 522.1,553.5 542.9,555.4 563.7,556.5 584.5,557.3 605.3,558.8 626.2,559.6 647.0,560.4 667.8,561.2 688.6,562.3 709.4,562.2 730.3,562.8 751.1,563.5 771.9,564.3 792.7,564.2 813.5,565.3 834.4,565.3 855.2,564.9 876.0,564.5 876.0,586.0" fill="url(#area)"/>
+<line x1="188.9" x2="188.9" y1="454.0" y2="586.0" stroke="#898781" stroke-dasharray="3 3"/>
+<text x="194.9" y="464.0" font-size="11" font-weight="400" fill="#52514e" text-anchor="start">peak learning rate (OneCycle)</text>
+<polyline points="64.0,468.1 84.8,489.8 105.6,497.2 126.5,502.5 147.3,506.2 168.1,510.8 188.9,513.8 209.7,518.2 230.6,522.8 251.4,525.3 272.2,529.5 293.0,529.4 313.8,532.1 334.7,535.3 355.5,538.9 376.3,541.4 397.1,542.9 417.9,545.3 438.8,546.6 459.6,548.6 480.4,550.9 501.2,550.6 522.1,553.5 542.9,555.4 563.7,556.5 584.5,557.3 605.3,558.8 626.2,559.6 647.0,560.4 667.8,561.2 688.6,562.3 709.4,562.2 730.3,562.8 751.1,563.5 771.9,564.3 792.7,564.2 813.5,565.3 834.4,565.3 855.2,564.9 876.0,564.5" fill="none" stroke="#2a78d6" stroke-width="2" stroke-linejoin="round"/>
+<circle cx="64.0" cy="468.1" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<circle cx="876.0" cy="564.5" r="4.5" fill="#2a78d6" stroke="#fcfcfb" stroke-width="2"/>
+<text x="74.0" y="472.1" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">3.23</text>
+<text x="886.0" y="568.5" font-size="12" font-weight="600" fill="#0b0b0b" text-anchor="start">1.41</text>
+<text x="64.0" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="middle">1</text>
+<text x="251.4" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="middle">10</text>
+<text x="459.6" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="middle">20</text>
+<text x="667.8" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="middle">30</text>
+<text x="876.0" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="middle">40</text>
+<text x="886.0" y="604.0" font-size="11" font-weight="400" fill="#898781" text-anchor="start">epoch</text>
+</svg>
